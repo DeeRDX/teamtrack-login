@@ -103,6 +103,23 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
+}
+
+.bg-login-gradient {
+  background: linear-gradient(
+    160deg,
+    hsl(var(--login-gradient-start)) 0%,
+    hsl(var(--login-gradient-end)) 100%
+  );
+}
+
+.text-login-foreground {
+  color: hsl(0 0% 98%);
+}
+
+.text-login-muted {
+  color: hsl(220 20% 65%);
 }
