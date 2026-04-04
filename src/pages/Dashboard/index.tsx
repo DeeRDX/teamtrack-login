@@ -127,7 +127,7 @@ const DashboardPage = () => {
             <Button variant="outline" size="sm" className="gap-1.5">
               This Week <ChevronDown className="h-3.5 w-3.5" />
             </Button>
-            <Button size="sm" className="gap-1.5">
+            <Button size="sm" className="gap-1.5" onClick={() => setLogTaskOpen(true)}>
               <Plus className="h-4 w-4" /> Log Task
             </Button>
             <button className="relative ml-1 rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-foreground">
