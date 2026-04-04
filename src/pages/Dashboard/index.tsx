@@ -59,6 +59,7 @@ const navItems = [
 const DashboardPage = () => {
   const { user, logout } = useAuth();
   const userName = user?.name || "John";
+  const [logTaskOpen, setLogTaskOpen] = useState(false);
 
   return (
     <div className="flex min-h-screen bg-background">
