@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
+import LogTaskModal from "@/components/LogTaskModal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Users,
@@ -57,6 +59,7 @@ const navItems = [
 const DashboardPage = () => {
   const { user, logout } = useAuth();
   const userName = user?.name || "John";
+  const [logTaskOpen, setLogTaskOpen] = useState(false);
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -124,7 +127,7 @@ const DashboardPage = () => {
             <Button variant="outline" size="sm" className="gap-1.5">
               This Week <ChevronDown className="h-3.5 w-3.5" />
             </Button>
-            <Button size="sm" className="gap-1.5">
+            <Button size="sm" className="gap-1.5" onClick={() => setLogTaskOpen(true)}>
               <Plus className="h-4 w-4" /> Log Task
             </Button>
             <button className="relative ml-1 rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-foreground">
@@ -311,6 +314,8 @@ const DashboardPage = () => {
           </Card>
         </main>
       </div>
+
+      <LogTaskModal open={logTaskOpen} onOpenChange={setLogTaskOpen} />
     </div>
   );
 };
