@@ -314,6 +314,8 @@ const DashboardPage = () => {
           </Card>
         </main>
       </div>
+
+      <LogTaskModal open={logTaskOpen} onOpenChange={setLogTaskOpen} />
     </div>
   );
 };
