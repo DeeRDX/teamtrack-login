@@ -106,8 +106,8 @@ const DashboardPage = () => {
               <p className="text-sm font-medium text-foreground truncate">{userName}</p>
               <p className="text-xs text-muted-foreground">Tech Lead</p>
             </div>
-            <button className="text-muted-foreground hover:text-foreground">
-              <MoreVertical className="h-4 w-4" />
+            <button onClick={logout} className="text-muted-foreground hover:text-destructive" title="Logout">
+              <LogOut className="h-4 w-4" />
             </button>
           </div>
         </div>
