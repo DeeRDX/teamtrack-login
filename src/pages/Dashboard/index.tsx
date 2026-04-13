@@ -58,7 +58,10 @@ const navItems = [
 
 const DashboardPage = () => {
   const { user, logout } = useAuth();
-  const userName = user?.name || "John";
+  console.log("DATA",user);
+  const userName =user?.fullName || "John";
+  // const uName= user?.fullName;
+  const uRole =user?.roleName;
   const [logTaskOpen, setLogTaskOpen] = useState(false);
 
   return (
@@ -104,7 +107,7 @@ const DashboardPage = () => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground truncate">{userName}</p>
-              <p className="text-xs text-muted-foreground">Tech Lead</p>
+              <p className="text-xs text-muted-foreground">{uRole}</p>
             </div>
             <button className="text-muted-foreground hover:text-foreground">
               <MoreVertical className="h-4 w-4" />
