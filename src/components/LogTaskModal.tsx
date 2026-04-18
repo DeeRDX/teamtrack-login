@@ -18,11 +18,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-<<<<<<< Updated upstream
 import { useTasks, type Task } from "@/context/TasksContext";
-=======
-import CreatableSelect from "react-select/creatable";
->>>>>>> Stashed changes
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface LogTaskModalProps {
   open: boolean;
@@ -43,6 +46,92 @@ const emptyForm = {
   endDate: "",
 };
 
+const PRESET_OPTIONS = [
+  { label: "Daily Standup", value: "Daily Standup" },
+  { label: "Project Meeting", value: "Project Meeting" },
+];
+
+interface CreatableComboboxProps {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  options: { label: string; value: string }[];
+}
+
+const CreatableCombobox = ({ value, onChange, placeholder, options }: CreatableComboboxProps) => {
+  const [open, setOpen] = useState(false);
+  const [input, setInput] = useState(value);
+
+  useEffect(() => {
+    setInput(value);
+  }, [value]);
+
+  const matches = options.filter((o) =>
+    o.label.toLowerCase().includes(input.toLowerCase())
+  );
+  const showCreate =
+    input.trim().length > 0 &&
+    !options.some((o) => o.value.toLowerCase() === input.trim().toLowerCase());
+
+  const commit = (val: string) => {
+    onChange(val);
+    setInput(val);
+    setOpen(false);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <div className="relative">
+          <Input
+            value={input}
+            onChange={(e) => {
+              setInput(e.target.value);
+              onChange(e.target.value);
+              if (!open) setOpen(true);
+            }}
+            onFocus={() => setOpen(true)}
+            placeholder={placeholder}
+            className="pr-8"
+          />
+          <ChevronsUpDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50" />
+        </div>
+      </PopoverTrigger>
+      <PopoverContent
+        className="p-1 w-[--radix-popover-trigger-width]"
+        align="start"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <div className="max-h-56 overflow-y-auto">
+          {matches.length === 0 && !showCreate && (
+            <div className="px-2 py-1.5 text-xs text-muted-foreground">No options</div>
+          )}
+          {matches.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => commit(opt.value)}
+              className="flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+            >
+              <span>{opt.label}</span>
+              {value === opt.value && <Check className="h-3.5 w-3.5" />}
+            </button>
+          ))}
+          {showCreate && (
+            <button
+              type="button"
+              onClick={() => commit(input.trim())}
+              className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+            >
+              + Use "{input.trim()}"
+            </button>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
 const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) => {
   const { addTask, updateTask } = useTasks();
   const [formData, setFormData] = useState(emptyForm);
@@ -56,16 +145,10 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
     }
   }, [editingTask, open]);
 
-  const options = [
-    { label: "Daily Standup", value: "daily-standup" },
-    { label: "Project Meeting", value: "project-meeting" },
-  ];
-
   const handleChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-<<<<<<< Updated upstream
   const handleSave = () => {
     if (editingTask) {
       updateTask(editingTask.id, formData);
@@ -73,29 +156,6 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
       addTask(formData);
     }
     onOpenChange(false);
-=======
-  const handleSave = async () => {
-    try {
-      const response = await fetch("http://localhost:3000/tasks", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...formData,
-          plannedHrs: Number(formData.plannedHrs),
-          loggedHrs: Number(formData.loggedHrs),
-        }),
-      });
-
-      const data = await response.json();
-      console.log("Saved to API:", data);
-
-      onOpenChange(false);
-    } catch (error) {
-      console.error("Error saving task:", error);
-    }
->>>>>>> Stashed changes
   };
 
   return (
@@ -113,60 +173,22 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
               <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Main ID
               </Label>
-              <CreatableSelect
-                options={options}
-                value={
-                  formData.mainId
-                    ? { label: formData.mainId, value: formData.mainId }
-                    : null
-                }
-                onChange={(selected) => {
-                  setFormData((prev) => ({
-                    ...prev,
-                    mainId: selected?.value || "",
-                  }));
-                }}
-                onInputChange={(inputValue, actionMeta) => {
-                  if (actionMeta.action === "input-change") {
-                    setFormData((prev) => ({
-                      ...prev,
-                      mainId: inputValue,
-                    }));
-                  }
-                }}
-                placeholder="Select or type Main ID"
-                isClearable
-                className="text-sm"
+              <CreatableCombobox
+                value={formData.mainId}
+                onChange={(v) => handleChange("mainId", v)}
+                options={PRESET_OPTIONS}
+                placeholder="Select or type"
               />
             </div>
             <div className="space-y-1.5">
               <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Task Ref
               </Label>
-              <CreatableSelect
-                options={options}
-                value={
-                  formData.mainId
-                    ? { label: formData.mainId, value: formData.mainId }
-                    : null
-                }
-                onChange={(selected) => {
-                  setFormData((prev) => ({
-                    ...prev,
-                    mainId: selected?.value || "",
-                  }));
-                }}
-                onInputChange={(inputValue, actionMeta) => {
-                  if (actionMeta.action === "input-change") {
-                    setFormData((prev) => ({
-                      ...prev,
-                      mainId: inputValue,
-                    }));
-                  }
-                }}
-                placeholder="Select or type Main ID"
-                isClearable
-                className="text-sm"
+              <CreatableCombobox
+                value={formData.taskRef}
+                onChange={(v) => handleChange("taskRef", v)}
+                options={PRESET_OPTIONS}
+                placeholder="Select or type"
               />
             </div>
             <div className="space-y-1.5">
