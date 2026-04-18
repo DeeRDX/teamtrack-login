@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -18,32 +18,50 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useTasks, type Task } from "@/context/TasksContext";
 
 interface LogTaskModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  editingTask?: Task | null;
 }
 
-const LogTaskModal = ({ open, onOpenChange }: LogTaskModalProps) => {
-  const [formData, setFormData] = useState({
-    mainId: "",
-    taskRef: "",
-    complexity: "Low",
-    description: "",
-    classification: "CR",
-    plannedHrs: "0.0",
-    loggedHrs: "0.0",
-    inProduction: false,
-    startDate: "",
-    endDate: "",
-  });
+const emptyForm = {
+  mainId: "",
+  taskRef: "",
+  complexity: "Low",
+  description: "",
+  classification: "CR",
+  plannedHrs: "0.0",
+  loggedHrs: "0.0",
+  inProduction: false,
+  startDate: "",
+  endDate: "",
+};
+
+const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) => {
+  const { addTask, updateTask } = useTasks();
+  const [formData, setFormData] = useState(emptyForm);
+
+  useEffect(() => {
+    if (editingTask) {
+      const { id, ...rest } = editingTask;
+      setFormData(rest);
+    } else {
+      setFormData(emptyForm);
+    }
+  }, [editingTask, open]);
 
   const handleChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSave = () => {
-    console.log("Task saved:", formData);
+    if (editingTask) {
+      updateTask(editingTask.id, formData);
+    } else {
+      addTask(formData);
+    }
     onOpenChange(false);
   };
 
@@ -52,12 +70,11 @@ const LogTaskModal = ({ open, onOpenChange }: LogTaskModalProps) => {
       <DialogContent className="sm:max-w-[520px] p-0 gap-0">
         <DialogHeader className="px-6 pt-6 pb-4">
           <DialogTitle className="text-xl font-bold text-foreground">
-            Add New Task
+            {editingTask ? "Edit Task" : "Add New Task"}
           </DialogTitle>
         </DialogHeader>
 
         <div className="px-6 pb-6 space-y-5">
-          {/* Row 1: Main ID, Task Ref, Complexity */}
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -99,7 +116,6 @@ const LogTaskModal = ({ open, onOpenChange }: LogTaskModalProps) => {
             </div>
           </div>
 
-          {/* Description */}
           <div className="space-y-1.5">
             <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Description
@@ -112,7 +128,6 @@ const LogTaskModal = ({ open, onOpenChange }: LogTaskModalProps) => {
             />
           </div>
 
-          {/* Row 2: Classification, Planned Hrs, Logged Hrs */}
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -157,7 +172,6 @@ const LogTaskModal = ({ open, onOpenChange }: LogTaskModalProps) => {
             </div>
           </div>
 
-          {/* Row 3: In Production toggle, Start Date, End Date */}
           <div className="grid grid-cols-3 gap-4 items-end">
             <div className="flex items-center gap-3 pb-1">
               <Switch
@@ -195,7 +209,7 @@ const LogTaskModal = ({ open, onOpenChange }: LogTaskModalProps) => {
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>Save Task</Button>
+          <Button onClick={handleSave}>{editingTask ? "Update Task" : "Save Task"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
