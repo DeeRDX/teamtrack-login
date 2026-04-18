@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import LogTaskModal from "@/components/LogTaskModal";
+import TaskEntriesTable from "@/components/TaskEntriesTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Users,
@@ -18,28 +19,8 @@ import {
   Settings,
   Code2,
   Layers,
-  MoreVertical,
   Download,
 } from "lucide-react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  ResponsiveContainer,
-  Cell,
-} from "recharts";
-
-const chartData = [
-  { day: "MON", logged: 7.5, leave: 0 },
-  { day: "TUE", logged: 8, leave: 0 },
-  { day: "WED", logged: 6, leave: 0 },
-  { day: "THU", logged: 0, leave: 8, isLeave: true },
-  { day: "FRI", logged: 5, leave: 0 },
-  { day: "SAT", logged: 0, leave: 0 },
-  { day: "SUN", logged: 0, leave: 0 },
-];
 
 const recentEntries = [
   { icon: Users, title: "Daily Stand-up", project: "INTERNAL OPS", hours: "1.0h" },
@@ -58,10 +39,9 @@ const navItems = [
 
 const DashboardPage = () => {
   const { user, logout } = useAuth();
-  console.log("DATA",user);
-  const userName =user?.fullName || "John";
-  // const uName= user?.fullName;
-  const uRole =user?.roleName;
+  const userAny = user as unknown as Record<string, string> | null;
+  const userName = userAny?.fullName || userAny?.name || "John";
+  const uRole = userAny?.roleName || userAny?.role || "Member";
   const [logTaskOpen, setLogTaskOpen] = useState(false);
 
   return (
@@ -210,46 +190,11 @@ const DashboardPage = () => {
             </Card>
           </div>
 
-          {/* Chart + Recent Entries */}
+          {/* Task Entries Table + Recent Entries */}
           <div className="mb-6 grid grid-cols-3 gap-4">
-            {/* Chart */}
-            <Card className="col-span-2">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-base font-bold">Hours Logged Per Day</CardTitle>
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full bg-primary" /> LOGGED
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full bg-muted-foreground/30" /> LEAVE
-                  </span>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="h-[240px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} barCategoryGap="30%">
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(220 15% 92%)" />
-                      <XAxis
-                        dataKey="day"
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: 12, fill: "hsl(220 10% 50%)" }}
-                      />
-                      <YAxis hide />
-                      <Bar dataKey="logged" radius={[4, 4, 0, 0]} maxBarSize={32}>
-                        {chartData.map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={entry.isLeave ? "hsl(220 10% 85%)" : "hsl(220 70% 45%)"}
-                          />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="col-span-2">
+              <TaskEntriesTable />
+            </div>
 
             {/* Recent Entries */}
             <Card>
