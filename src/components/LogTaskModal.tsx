@@ -18,7 +18,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+<<<<<<< Updated upstream
 import { useTasks, type Task } from "@/context/TasksContext";
+=======
+import CreatableSelect from "react-select/creatable";
+>>>>>>> Stashed changes
 
 interface LogTaskModalProps {
   open: boolean;
@@ -52,10 +56,16 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
     }
   }, [editingTask, open]);
 
+  const options = [
+    { label: "Daily Standup", value: "daily-standup" },
+    { label: "Project Meeting", value: "project-meeting" },
+  ];
+
   const handleChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+<<<<<<< Updated upstream
   const handleSave = () => {
     if (editingTask) {
       updateTask(editingTask.id, formData);
@@ -63,6 +73,29 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
       addTask(formData);
     }
     onOpenChange(false);
+=======
+  const handleSave = async () => {
+    try {
+      const response = await fetch("http://localhost:3000/tasks", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...formData,
+          plannedHrs: Number(formData.plannedHrs),
+          loggedHrs: Number(formData.loggedHrs),
+        }),
+      });
+
+      const data = await response.json();
+      console.log("Saved to API:", data);
+
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Error saving task:", error);
+    }
+>>>>>>> Stashed changes
   };
 
   return (
@@ -80,20 +113,60 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
               <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Main ID
               </Label>
-              <Input
-                placeholder="e.g. 45877"
-                value={formData.mainId}
-                onChange={(e) => handleChange("mainId", e.target.value)}
+              <CreatableSelect
+                options={options}
+                value={
+                  formData.mainId
+                    ? { label: formData.mainId, value: formData.mainId }
+                    : null
+                }
+                onChange={(selected) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    mainId: selected?.value || "",
+                  }));
+                }}
+                onInputChange={(inputValue, actionMeta) => {
+                  if (actionMeta.action === "input-change") {
+                    setFormData((prev) => ({
+                      ...prev,
+                      mainId: inputValue,
+                    }));
+                  }
+                }}
+                placeholder="Select or type Main ID"
+                isClearable
+                className="text-sm"
               />
             </div>
             <div className="space-y-1.5">
               <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Task Ref
               </Label>
-              <Input
-                placeholder="e.g. 145266"
-                value={formData.taskRef}
-                onChange={(e) => handleChange("taskRef", e.target.value)}
+              <CreatableSelect
+                options={options}
+                value={
+                  formData.mainId
+                    ? { label: formData.mainId, value: formData.mainId }
+                    : null
+                }
+                onChange={(selected) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    mainId: selected?.value || "",
+                  }));
+                }}
+                onInputChange={(inputValue, actionMeta) => {
+                  if (actionMeta.action === "input-change") {
+                    setFormData((prev) => ({
+                      ...prev,
+                      mainId: inputValue,
+                    }));
+                  }
+                }}
+                placeholder="Select or type Main ID"
+                isClearable
+                className="text-sm"
               />
             </div>
             <div className="space-y-1.5">

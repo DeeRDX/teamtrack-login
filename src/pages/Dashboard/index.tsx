@@ -191,39 +191,12 @@ const DashboardPage = () => {
           </div>
 
           {/* Task Entries Table + Recent Entries */}
-          <div className="mb-6 grid grid-cols-3 gap-4">
+          <div className="mb-6">
             <div className="col-span-2">
               <TaskEntriesTable />
             </div>
 
-            {/* Recent Entries */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-base font-bold">Recent Entries</CardTitle>
-                <button className="text-sm font-medium text-primary hover:underline">
-                  View All
-                </button>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="space-y-4">
-                  {recentEntries.map((entry) => (
-                    <div key={entry.title} className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
-                        <entry.icon className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground">{entry.title}</p>
-                        <p className="text-xs text-muted-foreground">{entry.project}</p>
-                      </div>
-                      <span className="text-sm font-semibold text-foreground">{entry.hours}</span>
-                    </div>
-                  ))}
-                </div>
-                <Button variant="outline" className="mt-5 w-full gap-2" size="sm">
-                  <Download className="h-4 w-4" /> Download Report
-                </Button>
-              </CardContent>
-            </Card>
+            
           </div>
 
           {/* Footer Bar */}
