@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import { Button } from "@/components/ui/button";
 import LogTaskModal from "@/components/LogTaskModal";
 import TaskEntriesTable from "@/components/TaskEntriesTable";
@@ -20,6 +21,8 @@ import {
   Code2,
   Layers,
   Download,
+  Moon,
+  Sun,
 } from "lucide-react";
 
 const recentEntries = [
@@ -39,6 +42,7 @@ const navItems = [
 
 const DashboardPage = () => {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const userAny = user as unknown as Record<string, string> | null;
   const userName = userAny?.fullName || userAny?.name || "John";
   const uRole = userAny?.roleName || userAny?.role || "Member";
@@ -113,7 +117,15 @@ const DashboardPage = () => {
             <Button size="sm" className="gap-1.5" onClick={() => setLogTaskOpen(true)}>
               <Plus className="h-4 w-4" /> Log Task
             </Button>
-            <button className="relative ml-1 rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-foreground">
+            <button
+              onClick={toggleTheme}
+              className="relative ml-1 rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              aria-label="Toggle theme"
+            >
+              {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </button>
+            <button className="relative rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-foreground">
               <Bell className="h-5 w-5" />
             </button>
           </div>
