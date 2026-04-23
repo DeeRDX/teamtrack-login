@@ -3,15 +3,18 @@ import React, { createContext, useContext, useState, useCallback } from "react";
 export interface Task {
   id: string;
   mainId: string;
-  taskRef: string;
-  complexity: "Low" | "Medium" | "High" | string;
-  description: string;
-  classification: string;
-  plannedHrs: string;
-  loggedHrs: string;
+  taskRefId: string;
+  taskDescription: string;
   inProduction: boolean;
-  startDate: string;
-  endDate: string;
+  complexity: "Low" | "Medium" | "High" | string;
+  classification: string;
+  logDate: string;
+  planStartDate: string;
+  planEndDate: string;
+  actualStartDate: string;
+  actualEndDate: string;
+  plannedHours: number;
+  hoursLogged: number;
 }
 
 interface TasksContextType {
@@ -27,41 +30,50 @@ const seedTasks: Task[] = [
   {
     id: "t1",
     mainId: "45877",
-    taskRef: "145266",
-    complexity: "Medium",
-    description: "API integration for user module",
-    classification: "CR",
-    plannedHrs: "4.0",
-    loggedHrs: "4.5",
+    taskRefId: "145266",
+    taskDescription: "API integration for user module",
     inProduction: false,
-    startDate: "2025-04-14",
-    endDate: "2025-04-15",
+    complexity: "Medium",
+    classification: "CR",
+    logDate: "2025-04-14",
+    planStartDate: "2025-04-14",
+    planEndDate: "2025-04-15",
+    actualStartDate: "2025-04-14",
+    actualEndDate: "2025-04-15",
+    plannedHours: 4,
+    hoursLogged: 4.5,
   },
   {
     id: "t2",
     mainId: "45901",
-    taskRef: "145288",
-    complexity: "High",
-    description: "Fix production bug in login flow",
-    classification: "Bug",
-    plannedHrs: "2.0",
-    loggedHrs: "3.0",
+    taskRefId: "145288",
+    taskDescription: "Fix production bug in login flow",
     inProduction: true,
-    startDate: "2025-04-15",
-    endDate: "2025-04-15",
+    complexity: "High",
+    classification: "Bug",
+    logDate: "2025-04-15",
+    planStartDate: "2025-04-15",
+    planEndDate: "2025-04-15",
+    actualStartDate: "2025-04-15",
+    actualEndDate: "2025-04-15",
+    plannedHours: 2,
+    hoursLogged: 3,
   },
   {
     id: "t3",
     mainId: "45920",
-    taskRef: "145299",
-    complexity: "Low",
-    description: "Code review for dashboard PR",
-    classification: "Support",
-    plannedHrs: "1.0",
-    loggedHrs: "1.5",
+    taskRefId: "145299",
+    taskDescription: "Code review for dashboard PR",
     inProduction: false,
-    startDate: "2025-04-16",
-    endDate: "2025-04-16",
+    complexity: "Low",
+    classification: "Support",
+    logDate: "2025-04-16",
+    planStartDate: "2025-04-16",
+    planEndDate: "2025-04-16",
+    actualStartDate: "2025-04-16",
+    actualEndDate: "2025-04-16",
+    plannedHours: 1,
+    hoursLogged: 1.5,
   },
 ];
 

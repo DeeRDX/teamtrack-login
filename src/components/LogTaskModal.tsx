@@ -25,7 +25,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Check, ChevronsUpDown } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface LogTaskModalProps {
   open: boolean;
@@ -33,17 +32,38 @@ interface LogTaskModalProps {
   editingTask?: Task | null;
 }
 
-const emptyForm = {
+interface FormState {
+  mainId: string;
+  taskRefId: string;
+  taskDescription: string;
+  inProduction: boolean;
+  complexity: string;
+  classification: string;
+  logDate: string;
+  planStartDate: string;
+  planEndDate: string;
+  actualStartDate: string;
+  actualEndDate: string;
+  plannedHours: string;
+  hoursLogged: string;
+}
+
+const today = () => new Date().toISOString().slice(0, 10);
+
+const emptyForm: FormState = {
   mainId: "",
-  taskRef: "",
-  complexity: "Low",
-  description: "",
-  classification: "CR",
-  plannedHrs: "0.0",
-  loggedHrs: "0.0",
+  taskRefId: "",
+  taskDescription: "",
   inProduction: false,
-  startDate: "",
-  endDate: "",
+  complexity: "Low",
+  classification: "CR",
+  logDate: today(),
+  planStartDate: today(),
+  planEndDate: today(),
+  actualStartDate: today(),
+  actualEndDate: today(),
+  plannedHours: "0",
+  hoursLogged: "0",
 };
 
 const PRESET_OPTIONS = [
@@ -134,33 +154,65 @@ const CreatableCombobox = ({ value, onChange, placeholder, options }: CreatableC
 
 const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) => {
   const { addTask, updateTask } = useTasks();
-  const [formData, setFormData] = useState(emptyForm);
+  const [formData, setFormData] = useState<FormState>(emptyForm);
 
   useEffect(() => {
     if (editingTask) {
-      const { id, ...rest } = editingTask;
-      setFormData(rest);
+      setFormData({
+        mainId: editingTask.mainId ?? "",
+        taskRefId: editingTask.taskRefId ?? "",
+        taskDescription: editingTask.taskDescription ?? "",
+        inProduction: !!editingTask.inProduction,
+        complexity: editingTask.complexity ?? "Low",
+        classification: editingTask.classification ?? "CR",
+        logDate: editingTask.logDate ?? today(),
+        planStartDate: editingTask.planStartDate ?? today(),
+        planEndDate: editingTask.planEndDate ?? today(),
+        actualStartDate: editingTask.actualStartDate ?? today(),
+        actualEndDate: editingTask.actualEndDate ?? today(),
+        plannedHours: String(editingTask.plannedHours ?? 0),
+        hoursLogged: String(editingTask.hoursLogged ?? 0),
+      });
     } else {
       setFormData(emptyForm);
     }
   }, [editingTask, open]);
 
-  const handleChange = (field: string, value: string | boolean) => {
+  const handleChange = <K extends keyof FormState>(field: K, value: FormState[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSave = () => {
+    const payload = {
+      mainId: formData.mainId,
+      taskRefId: formData.taskRefId,
+      taskDescription: formData.taskDescription,
+      inProduction: formData.inProduction,
+      complexity: formData.complexity,
+      classification: formData.classification,
+      logDate: formData.logDate,
+      planStartDate: formData.planStartDate,
+      planEndDate: formData.planEndDate,
+      actualStartDate: formData.actualStartDate,
+      actualEndDate: formData.actualEndDate,
+      plannedHours: Number(formData.plannedHours) || 0,
+      hoursLogged: Number(formData.hoursLogged) || 0,
+    };
+
     if (editingTask) {
-      updateTask(editingTask.id, formData);
+      updateTask(editingTask.id, payload);
     } else {
-      addTask(formData);
+      addTask(payload);
     }
     onOpenChange(false);
   };
 
+  const labelClass =
+    "text-[11px] font-semibold uppercase tracking-wider text-muted-foreground";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px] p-0 gap-0">
+      <DialogContent className="sm:max-w-[640px] p-0 gap-0 max-h-[90vh] overflow-y-auto">
         <DialogHeader className="px-6 pt-6 pb-4">
           <DialogTitle className="text-xl font-bold text-foreground">
             {editingTask ? "Edit Task" : "Add New Task"}
@@ -170,9 +222,7 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
         <div className="px-6 pb-6 space-y-5">
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Main ID
-              </Label>
+              <Label className={labelClass}>Main ID</Label>
               <CreatableCombobox
                 value={formData.mainId}
                 onChange={(v) => handleChange("mainId", v)}
@@ -181,20 +231,16 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Task Ref
-              </Label>
+              <Label className={labelClass}>Task Ref ID</Label>
               <CreatableCombobox
-                value={formData.taskRef}
-                onChange={(v) => handleChange("taskRef", v)}
+                value={formData.taskRefId}
+                onChange={(v) => handleChange("taskRefId", v)}
                 options={PRESET_OPTIONS}
                 placeholder="Select or type"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Complexity
-              </Label>
+              <Label className={labelClass}>Complexity</Label>
               <Select
                 value={formData.complexity}
                 onValueChange={(v) => handleChange("complexity", v)}
@@ -212,22 +258,18 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Description
-            </Label>
+            <Label className={labelClass}>Task Description</Label>
             <Textarea
               placeholder="Describe your progress..."
               className="min-h-[80px] resize-y"
-              value={formData.description}
-              onChange={(e) => handleChange("description", e.target.value)}
+              value={formData.taskDescription}
+              onChange={(e) => handleChange("taskDescription", e.target.value)}
             />
           </div>
 
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Classification
-              </Label>
+              <Label className={labelClass}>Classification</Label>
               <Select
                 value={formData.classification}
                 onValueChange={(v) => handleChange("classification", v)}
@@ -244,57 +286,78 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Planned Hrs
-              </Label>
+              <Label className={labelClass}>Planned Hours</Label>
               <Input
                 type="number"
                 step="0.5"
-                value={formData.plannedHrs}
-                onChange={(e) => handleChange("plannedHrs", e.target.value)}
+                min="0"
+                value={formData.plannedHours}
+                onChange={(e) => handleChange("plannedHours", e.target.value)}
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Logged Hrs
-              </Label>
+              <Label className={labelClass}>Hours Logged</Label>
               <Input
                 type="number"
                 step="0.5"
-                value={formData.loggedHrs}
-                onChange={(e) => handleChange("loggedHrs", e.target.value)}
+                min="0"
+                value={formData.hoursLogged}
+                onChange={(e) => handleChange("hoursLogged", e.target.value)}
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4 items-end">
-            <div className="flex items-center gap-3 pb-1">
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-1.5">
+              <Label className={labelClass}>Log Date</Label>
+              <Input
+                type="date"
+                value={formData.logDate}
+                onChange={(e) => handleChange("logDate", e.target.value)}
+              />
+            </div>
+            <div className="flex items-center gap-3 pb-1 col-span-2 justify-end">
+              <Label className="text-sm font-medium text-foreground">
+                In Production
+              </Label>
               <Switch
                 checked={formData.inProduction}
                 onCheckedChange={(v) => handleChange("inProduction", v)}
               />
-              <Label className="text-sm font-medium text-foreground">
-                In Production
-              </Label>
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Start Date
-              </Label>
+              <Label className={labelClass}>Plan Start Date</Label>
               <Input
                 type="date"
-                value={formData.startDate}
-                onChange={(e) => handleChange("startDate", e.target.value)}
+                value={formData.planStartDate}
+                onChange={(e) => handleChange("planStartDate", e.target.value)}
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                End Date
-              </Label>
+              <Label className={labelClass}>Plan End Date</Label>
               <Input
                 type="date"
-                value={formData.endDate}
-                onChange={(e) => handleChange("endDate", e.target.value)}
+                value={formData.planEndDate}
+                onChange={(e) => handleChange("planEndDate", e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className={labelClass}>Actual Start Date</Label>
+              <Input
+                type="date"
+                value={formData.actualStartDate}
+                onChange={(e) => handleChange("actualStartDate", e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className={labelClass}>Actual End Date</Label>
+              <Input
+                type="date"
+                value={formData.actualEndDate}
+                onChange={(e) => handleChange("actualEndDate", e.target.value)}
               />
             </div>
           </div>
