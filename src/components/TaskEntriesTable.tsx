@@ -89,10 +89,10 @@ const TaskEntriesTable = () => {
                         {task.mainId || "—"}
                       </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">
-                        {task.taskRef || "—"}
+                        {task.taskRefId || "—"}
                       </TableCell>
                       <TableCell className="max-w-[220px] truncate text-sm text-foreground">
-                        {task.description || "—"}
+                        {task.taskDescription || "—"}
                       </TableCell>
                       <TableCell>
                         <span className="inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
@@ -109,13 +109,13 @@ const TaskEntriesTable = () => {
                         </span>
                       </TableCell>
                       <TableCell className="text-right text-sm text-muted-foreground">
-                        {task.plannedHrs}h
+                        {task.plannedHours}h
                       </TableCell>
                       <TableCell className="text-right text-sm font-semibold text-foreground">
-                        {task.loggedHrs}h
+                        {task.hoursLogged}h
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                        {task.startDate || "—"}
+                        {task.logDate || "—"}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
