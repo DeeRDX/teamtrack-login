@@ -387,10 +387,13 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
         </div>
 
         <DialogFooter className="border-t border-border px-6 py-4">
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>{editingTask ? "Update Task" : "Save Task"}</Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {editingTask ? "Update Task" : "Save Task"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
