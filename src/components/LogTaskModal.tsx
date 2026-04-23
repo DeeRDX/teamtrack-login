@@ -24,7 +24,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
+import { createTask, updateTaskApi } from "@/api/tasks.api";
+import { toast } from "@/hooks/use-toast";
 
 interface LogTaskModalProps {
   open: boolean;
