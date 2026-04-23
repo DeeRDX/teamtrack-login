@@ -157,6 +157,7 @@ const CreatableCombobox = ({ value, onChange, placeholder, options }: CreatableC
 const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) => {
   const { addTask, updateTask } = useTasks();
   const [formData, setFormData] = useState<FormState>(emptyForm);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (editingTask) {
@@ -184,7 +185,7 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const payload = {
       mainId: formData.mainId,
       taskRefId: formData.taskRefId,
@@ -201,12 +202,32 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
       hoursLogged: Number(formData.hoursLogged) || 0,
     };
 
-    if (editingTask) {
-      updateTask(editingTask.id, payload);
-    } else {
-      addTask(payload);
+    setSaving(true);
+    try {
+      if (editingTask) {
+        await updateTaskApi(editingTask.id, payload);
+        updateTask(editingTask.id, payload);
+        toast({ title: "Task updated", description: "Changes saved successfully." });
+      } else {
+        const created = await createTask(payload);
+        // Prefer server-issued id when available
+        addTask({ ...payload, ...(created?.id ? {} : {}) });
+        toast({ title: "Task created", description: "Task saved successfully." });
+      }
+      onOpenChange(false);
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to save task. Please try again.";
+      toast({
+        title: "Save failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
     }
-    onOpenChange(false);
   };
 
   const labelClass =
