@@ -24,7 +24,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
+import { createTask, updateTaskApi } from "@/api/tasks.api";
+import { toast } from "@/hooks/use-toast";
 
 interface LogTaskModalProps {
   open: boolean;
@@ -155,6 +157,7 @@ const CreatableCombobox = ({ value, onChange, placeholder, options }: CreatableC
 const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) => {
   const { addTask, updateTask } = useTasks();
   const [formData, setFormData] = useState<FormState>(emptyForm);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (editingTask) {
@@ -182,7 +185,7 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const payload = {
       mainId: formData.mainId,
       taskRefId: formData.taskRefId,
@@ -199,12 +202,32 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
       hoursLogged: Number(formData.hoursLogged) || 0,
     };
 
-    if (editingTask) {
-      updateTask(editingTask.id, payload);
-    } else {
-      addTask(payload);
+    setSaving(true);
+    try {
+      if (editingTask) {
+        await updateTaskApi(editingTask.id, payload);
+        updateTask(editingTask.id, payload);
+        toast({ title: "Task updated", description: "Changes saved successfully." });
+      } else {
+        const created = await createTask(payload);
+        // Prefer server-issued id when available
+        addTask({ ...payload, ...(created?.id ? {} : {}) });
+        toast({ title: "Task created", description: "Task saved successfully." });
+      }
+      onOpenChange(false);
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to save task. Please try again.";
+      toast({
+        title: "Save failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
     }
-    onOpenChange(false);
   };
 
   const labelClass =
@@ -364,10 +387,13 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
         </div>
 
         <DialogFooter className="border-t border-border px-6 py-4">
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>{editingTask ? "Update Task" : "Save Task"}</Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {editingTask ? "Update Task" : "Save Task"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
