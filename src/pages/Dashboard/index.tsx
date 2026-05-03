@@ -24,6 +24,7 @@ import {
   Download,
   Moon,
   Sun,
+  UsersRound,
 } from "lucide-react";
 
 const recentEntries = [
@@ -34,11 +35,12 @@ const recentEntries = [
 ];
 
 const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", active: true },
-  { icon: Clock, label: "Timesheet", active: false },
-  { icon: FileText, label: "Summary", active: false },
-  { icon: CalendarDays, label: "Leaves", active: false },
-  { icon: BarChart3, label: "Reports", active: false },
+  { icon: LayoutDashboard, label: "Dashboard", key: "dashboard" },
+  { icon: Clock, label: "Timesheet", key: "timesheet" },
+  { icon: FileText, label: "Summary", key: "summary" },
+  { icon: UsersRound, label: "My Team", key: "myteam" },
+  { icon: CalendarDays, label: "Leaves", key: "leaves" },
+  { icon: BarChart3, label: "Reports", key: "reports" },
 ];
 
 const DashboardPage = () => {
@@ -48,6 +50,7 @@ const DashboardPage = () => {
   const userName = userAny?.fullName || userAny?.name || "John";
   const uRole = userAny?.roleName || userAny?.role || "Member";
   const [logTaskOpen, setLogTaskOpen] = useState(false);
+  const [activeView, setActiveView] = useState<string>("dashboard");
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -70,8 +73,9 @@ const DashboardPage = () => {
             {navItems.map((item) => (
               <li key={item.label}>
                 <button
+                  onClick={() => setActiveView(item.key)}
                   className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                    item.active
+                    activeView === item.key
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                   }`}
@@ -134,86 +138,85 @@ const DashboardPage = () => {
 
         {/* Content */}
         <main className="flex-1 p-8">
-          {/* Stats Cards */}
-          <div className="mb-6 grid grid-cols-4 gap-4">
-            {/* Today Logged */}
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                    <Clock className="h-5 w-5 text-primary" />
-                  </div>
-                  <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-600">
-                    +12%
-                  </span>
-                </div>
-                <p className="mt-3 text-sm text-muted-foreground">Today Logged</p>
-                <p className="text-2xl font-bold text-foreground">7.5 hours</p>
-              </CardContent>
-            </Card>
-
-            {/* Weekly Logged */}
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-                    <CalendarDays className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-500">
-                    -4%
-                  </span>
-                </div>
-                <p className="mt-3 text-sm text-muted-foreground">Weekly Logged</p>
-                <p className="text-2xl font-bold text-foreground">32.0 hours</p>
-              </CardContent>
-            </Card>
-
-            {/* Remaining Weekly */}
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-50">
-                    <FileText className="h-5 w-5 text-orange-500" />
-                  </div>
-                  <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                    Target 40H
-                  </span>
-                </div>
-                <p className="mt-3 text-sm text-muted-foreground">Remaining Weekly</p>
-                <p className="text-2xl font-bold text-foreground">8.0 hours</p>
-              </CardContent>
-            </Card>
-
-            {/* Tasks Worked */}
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-50">
-                    <CheckCircle2 className="h-5 w-5 text-green-500" />
-                  </div>
-                  <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-600">
-                    +2 Today
-                  </span>
-                </div>
-                <p className="mt-3 text-sm text-muted-foreground">Tasks Worked</p>
-                <p className="text-2xl font-bold text-foreground">
-                  14 <span className="text-base font-normal text-muted-foreground">completed</span>
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Task Entries Table + Recent Entries */}
-          <div className="mb-6">
-            <div className="col-span-2">
-              <TaskEntriesTable />
-            </div>
-          </div>
-
-          {/* My Team */}
-          <div className="mb-6">
+          {activeView === "myteam" ? (
             <MyTeam />
-          </div>
+          ) : (
+            <>
+              {/* Stats Cards */}
+              <div className="mb-6 grid grid-cols-4 gap-4">
+                {/* Today Logged */}
+                <Card>
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                        <Clock className="h-5 w-5 text-primary" />
+                      </div>
+                      <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-600">
+                        +12%
+                      </span>
+                    </div>
+                    <p className="mt-3 text-sm text-muted-foreground">Today Logged</p>
+                    <p className="text-2xl font-bold text-foreground">7.5 hours</p>
+                  </CardContent>
+                </Card>
+
+                {/* Weekly Logged */}
+                <Card>
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+                        <CalendarDays className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-500">
+                        -4%
+                      </span>
+                    </div>
+                    <p className="mt-3 text-sm text-muted-foreground">Weekly Logged</p>
+                    <p className="text-2xl font-bold text-foreground">32.0 hours</p>
+                  </CardContent>
+                </Card>
+
+                {/* Remaining Weekly */}
+                <Card>
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-50">
+                        <FileText className="h-5 w-5 text-orange-500" />
+                      </div>
+                      <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                        Target 40H
+                      </span>
+                    </div>
+                    <p className="mt-3 text-sm text-muted-foreground">Remaining Weekly</p>
+                    <p className="text-2xl font-bold text-foreground">8.0 hours</p>
+                  </CardContent>
+                </Card>
+
+                {/* Tasks Worked */}
+                <Card>
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-50">
+                        <CheckCircle2 className="h-5 w-5 text-green-500" />
+                      </div>
+                      <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-600">
+                        +2 Today
+                      </span>
+                    </div>
+                    <p className="mt-3 text-sm text-muted-foreground">Tasks Worked</p>
+                    <p className="text-2xl font-bold text-foreground">
+                      14 <span className="text-base font-normal text-muted-foreground">completed</span>
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Task Entries Table */}
+              <div className="mb-6">
+                <TaskEntriesTable />
+              </div>
+            </>
+          )}
 
           {/* Footer Bar */}
           <Card>
