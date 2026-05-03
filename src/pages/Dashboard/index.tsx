@@ -208,8 +208,11 @@ const DashboardPage = () => {
             <div className="col-span-2">
               <TaskEntriesTable />
             </div>
+          </div>
 
-            
+          {/* My Team */}
+          <div className="mb-6">
+            <MyTeam />
           </div>
 
           {/* Footer Bar */}
