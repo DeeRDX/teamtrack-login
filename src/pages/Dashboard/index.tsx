@@ -35,11 +35,12 @@ const recentEntries = [
 ];
 
 const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", active: true },
-  { icon: Clock, label: "Timesheet", active: false },
-  { icon: FileText, label: "Summary", active: false },
-  { icon: CalendarDays, label: "Leaves", active: false },
-  { icon: BarChart3, label: "Reports", active: false },
+  { icon: LayoutDashboard, label: "Dashboard", key: "dashboard" },
+  { icon: Clock, label: "Timesheet", key: "timesheet" },
+  { icon: FileText, label: "Summary", key: "summary" },
+  { icon: UsersRound, label: "My Team", key: "myteam" },
+  { icon: CalendarDays, label: "Leaves", key: "leaves" },
+  { icon: BarChart3, label: "Reports", key: "reports" },
 ];
 
 const DashboardPage = () => {
