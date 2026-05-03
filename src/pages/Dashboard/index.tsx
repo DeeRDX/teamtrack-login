@@ -73,8 +73,9 @@ const DashboardPage = () => {
             {navItems.map((item) => (
               <li key={item.label}>
                 <button
+                  onClick={() => setActiveView(item.key)}
                   className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                    item.active
+                    activeView === item.key
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                   }`}
