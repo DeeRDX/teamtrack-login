@@ -50,6 +50,7 @@ const DashboardPage = () => {
   const userName = userAny?.fullName || userAny?.name || "John";
   const uRole = userAny?.roleName || userAny?.role || "Member";
   const [logTaskOpen, setLogTaskOpen] = useState(false);
+  const [activeView, setActiveView] = useState<string>("dashboard");
 
   return (
     <div className="flex min-h-screen bg-background">
