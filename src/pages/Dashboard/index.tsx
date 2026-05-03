@@ -4,6 +4,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { Button } from "@/components/ui/button";
 import LogTaskModal from "@/components/LogTaskModal";
 import TaskEntriesTable from "@/components/TaskEntriesTable";
+import MyTeam from "@/components/MyTeam";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Users,
