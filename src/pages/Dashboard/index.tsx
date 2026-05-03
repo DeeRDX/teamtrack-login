@@ -4,6 +4,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { Button } from "@/components/ui/button";
 import LogTaskModal from "@/components/LogTaskModal";
 import TaskEntriesTable from "@/components/TaskEntriesTable";
+import MyTeam from "@/components/MyTeam";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Users,
@@ -207,8 +208,11 @@ const DashboardPage = () => {
             <div className="col-span-2">
               <TaskEntriesTable />
             </div>
+          </div>
 
-            
+          {/* My Team */}
+          <div className="mb-6">
+            <MyTeam />
           </div>
 
           {/* Footer Bar */}
