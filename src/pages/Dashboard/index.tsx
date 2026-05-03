@@ -24,6 +24,7 @@ import {
   Download,
   Moon,
   Sun,
+  UsersRound,
 } from "lucide-react";
 
 const recentEntries = [
