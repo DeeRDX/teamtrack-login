@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import LogTaskModal from "@/components/LogTaskModal";
 import TaskEntriesTable from "@/components/TaskEntriesTable";
 import MyTeam from "@/components/MyTeam";
+import UserAdministration from "@/components/UserAdministration";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Users,
@@ -25,6 +26,7 @@ import {
   Moon,
   Sun,
   UsersRound,
+  ShieldCheck,
 } from "lucide-react";
 
 const recentEntries = [
@@ -41,6 +43,7 @@ const navItems = [
   { icon: UsersRound, label: "My Team", key: "myteam" },
   { icon: CalendarDays, label: "Leaves", key: "leaves" },
   { icon: BarChart3, label: "Reports", key: "reports" },
+  { icon: ShieldCheck, label: "Admin", key: "admin" },
 ];
 
 const DashboardPage = () => {
@@ -140,6 +143,8 @@ const DashboardPage = () => {
         <main className="flex-1 p-8">
           {activeView === "myteam" ? (
             <MyTeam />
+          ) : activeView === "admin" ? (
+            <UserAdministration />
           ) : (
             <>
               {/* Stats Cards */}
