@@ -141,7 +141,7 @@ const DashboardPage = () => {
 
         {/* Content */}
         <main className="flex-1 p-8">
-          {activeView === "myteam" ? (
+          {activeView === "myteam" ? ( 
             <MyTeam />
           ) : activeView === "admin" ? (
             <UserAdministration />
