@@ -18,7 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useTasks, type Task } from "@/context/TasksContext";
 import LogTaskModal from "./LogTaskModal";
@@ -30,7 +30,7 @@ const complexityStyles: Record<string, string> = {
 };
 
 const TaskEntriesTable = () => {
-  const { tasks, deleteTask } = useTasks();
+  const { tasks, deleteTask, loading } = useTasks();
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -76,7 +76,16 @@ const TaskEntriesTable = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {tasks.length === 0 ? (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="py-10">
+                      <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading tasks...
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : tasks.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-10">
                       No tasks logged yet. Click "Log Task" to add your first entry.

@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import axios from "axios";
 
 export interface Task {
   id: string;
@@ -19,66 +20,73 @@ export interface Task {
 
 interface TasksContextType {
   tasks: Task[];
+  loading: boolean;
   addTask: (task: Omit<Task, "id">) => void;
   updateTask: (id: string, task: Omit<Task, "id">) => void;
   deleteTask: (id: string) => void;
+  refetchTasks: () => void;
 }
 
 const TasksContext = createContext<TasksContextType | null>(null);
 
-const seedTasks: Task[] = [
-  {
-    id: "t1",
-    mainId: "45877",
-    taskRefId: "145266",
-    taskDescription: "API integration for user module",
-    inProduction: false,
-    complexity: "Medium",
-    classification: "CR",
-    logDate: "2025-04-14",
-    planStartDate: "2025-04-14",
-    planEndDate: "2025-04-15",
-    actualStartDate: "2025-04-14",
-    actualEndDate: "2025-04-15",
-    plannedHours: 4,
-    hoursLogged: 4.5,
-  },
-  {
-    id: "t2",
-    mainId: "45901",
-    taskRefId: "145288",
-    taskDescription: "Fix production bug in login flow",
-    inProduction: true,
-    complexity: "High",
-    classification: "Bug",
-    logDate: "2025-04-15",
-    planStartDate: "2025-04-15",
-    planEndDate: "2025-04-15",
-    actualStartDate: "2025-04-15",
-    actualEndDate: "2025-04-15",
-    plannedHours: 2,
-    hoursLogged: 3,
-  },
-  {
-    id: "t3",
-    mainId: "45920",
-    taskRefId: "145299",
-    taskDescription: "Code review for dashboard PR",
-    inProduction: false,
-    complexity: "Low",
-    classification: "Support",
-    logDate: "2025-04-16",
-    planStartDate: "2025-04-16",
-    planEndDate: "2025-04-16",
-    actualStartDate: "2025-04-16",
-    actualEndDate: "2025-04-16",
-    plannedHours: 1,
-    hoursLogged: 1.5,
-  },
-];
+const mapApiTask = (apiTask: any): Task => ({
+  id: String(apiTask.taskId),
+  mainId: apiTask.mainId ?? "—",
+  taskRefId: apiTask.taskRefId ?? "—",
+  taskDescription: apiTask.taskDescription ?? "",
+  inProduction: false,
+  complexity: apiTask.complexity ?? "Low",
+  classification: apiTask.classification ?? "—",
+  logDate: apiTask.logDate ?? "",
+  planStartDate: apiTask.logDate ?? "",
+  planEndDate: apiTask.logDate ?? "",
+  actualStartDate: apiTask.logDate ?? "",
+  actualEndDate: apiTask.logDate ?? "",
+  plannedHours: apiTask.hoursLogged ?? 0,
+  hoursLogged: apiTask.hoursLogged ?? 0,
+});
 
-export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [tasks, setTasks] = useState<Task[]>(seedTasks);
+export const TasksProvider: React.FC<{
+  children: React.ReactNode;
+  userId: number | string | null;
+}> = ({ children, userId }) => {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchTasks = useCallback(async () => {
+    if (!userId) return;
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      console.warn("No auth token found in localStorage.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data } = await axios.get(`https://localhost:44352/api/users/${userId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log("data", data);
+      const recentTasks: Task[] = (data?.taskSummary?.recentTasks ?? []).map(mapApiTask);
+      setTasks(recentTasks);
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        console.error("API error:", err.response?.status, err.response?.data);
+      } else {
+        console.error("Failed to fetch tasks:", err);
+      }
+      setTasks([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
 
   const addTask = useCallback((task: Omit<Task, "id">) => {
     setTasks((prev) => [{ ...task, id: `t${Date.now()}` }, ...prev]);
@@ -93,7 +101,7 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   return (
-    <TasksContext.Provider value={{ tasks, addTask, updateTask, deleteTask }}>
+    <TasksContext.Provider value={{ tasks, loading, addTask, updateTask, deleteTask, refetchTasks: fetchTasks }}>
       {children}
     </TasksContext.Provider>
   );

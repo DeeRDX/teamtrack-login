@@ -50,6 +50,7 @@ const DashboardPage = () => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const userAny = user as unknown as Record<string, string> | null;
+  const userId = userAny?.userId || null;
   const userName = userAny?.fullName || userAny?.name || "John";
   const uRole = userAny?.roleName || userAny?.role || "Member";
   const [logTaskOpen, setLogTaskOpen] = useState(false);
