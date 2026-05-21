@@ -101,18 +101,35 @@ const CreatableCombobox = ({ value, onChange, placeholder, options }: CreatableC
     setOpen(false);
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setInput(val);
+    onChange(val);
+    setOpen(true); // always reopen on typing
+  };
+
+  const handleInputClick = () => {
+    setInput(""); // clear input on click so all options show
+    setOpen(true);
+  };
+
+  const handleInputBlur = () => {
+    // Restore the committed value if user clicks away without selecting
+    setTimeout(() => {
+      setInput(value);
+      setOpen(false);
+    }, 150); // small delay so click on option fires before blur
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <div className="relative">
           <Input
             value={input}
-            onChange={(e) => {
-              setInput(e.target.value);
-              onChange(e.target.value);
-              if (!open) setOpen(true);
-            }}
-            onFocus={() => setOpen(true)}
+            onChange={handleInputChange}
+            onClick={handleInputClick}
+            onBlur={handleInputBlur}
             placeholder={placeholder}
             className="pr-8"
           />
@@ -132,6 +149,7 @@ const CreatableCombobox = ({ value, onChange, placeholder, options }: CreatableC
             <button
               key={opt.value}
               type="button"
+              onMouseDown={(e) => e.preventDefault()} // prevent blur firing before commit
               onClick={() => commit(opt.value)}
               className="flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
             >
@@ -142,6 +160,7 @@ const CreatableCombobox = ({ value, onChange, placeholder, options }: CreatableC
           {showCreate && (
             <button
               type="button"
+              onMouseDown={(e) => e.preventDefault()} // prevent blur firing before commit
               onClick={() => commit(input.trim())}
               className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
             >

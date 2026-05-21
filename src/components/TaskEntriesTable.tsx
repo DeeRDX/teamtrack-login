@@ -22,6 +22,7 @@ import { Pencil, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useTasks, type Task } from "@/context/TasksContext";
 import LogTaskModal from "./LogTaskModal";
+import { toast } from "sonner";
 
 const complexityStyles: Record<string, string> = {
   Low: "bg-green-50 text-green-600 border-green-200",
@@ -34,15 +35,25 @@ const TaskEntriesTable = () => {
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const handleEdit = (task: Task) => {
     setEditTask(task);
     setEditOpen(true);
   };
 
-  const handleConfirmDelete = () => {
-    if (deleteId) deleteTask(deleteId);
-    setDeleteId(null);
+  const handleConfirmDelete = async () => {
+    if (!deleteId) return;
+    setDeleting(true);
+    try {
+      await deleteTask(deleteId);
+      toast.success("Task deleted successfully.");
+    } catch {
+      toast.error("Failed to delete task. Please try again.");
+    } finally {
+      setDeleting(false);
+      setDeleteId(null);
+    }
   };
 
   return (
@@ -166,7 +177,7 @@ const TaskEntriesTable = () => {
         editingTask={editTask}
       />
 
-      <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
+      <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && !deleting && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this task entry?</AlertDialogTitle>
@@ -175,12 +186,20 @@ const TaskEntriesTable = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDelete}
+              disabled={deleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {deleting ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Deleting...
+                </span>
+              ) : (
+                "Delete"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

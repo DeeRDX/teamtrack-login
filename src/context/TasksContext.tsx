@@ -22,12 +22,22 @@ interface TasksContextType {
   tasks: Task[];
   loading: boolean;
   addTask: (task: Omit<Task, "id">) => void;
-  updateTask: (id: string, task: Omit<Task, "id">) => void;
-  deleteTask: (id: string) => void;
+  updateTask: (id: string, task: Omit<Task, "id">) => Promise<void>;
+  deleteTask: (id: string) => Promise<void>;
   refetchTasks: () => void;
 }
 
 const TasksContext = createContext<TasksContextType | null>(null);
+
+const BASE_URL = "https://localhost:44352";
+
+const getAuthHeaders = () => {
+  const token = localStorage.getItem("token");
+  return {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+};
 
 const mapApiTask = (apiTask: any): Task => ({
   id: String(apiTask.taskId),
@@ -55,21 +65,16 @@ export const TasksProvider: React.FC<{
 
   const fetchTasks = useCallback(async () => {
     if (!userId) return;
-
     const token = localStorage.getItem("token");
     if (!token) {
       console.warn("No auth token found in localStorage.");
       return;
     }
-
     setLoading(true);
     try {
-      const { data } = await axios.get(`https://localhost:44352/api/users/${userId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const { data } = await axios.get(`${BASE_URL}/api/users/${userId}`, {
+        headers: getAuthHeaders(),
       });
-      console.log("data", data);
       const recentTasks: Task[] = (data?.taskSummary?.recentTasks ?? []).map(mapApiTask);
       setTasks(recentTasks);
     } catch (err) {
@@ -92,12 +97,52 @@ export const TasksProvider: React.FC<{
     setTasks((prev) => [{ ...task, id: `t${Date.now()}` }, ...prev]);
   }, []);
 
-  const updateTask = useCallback((id: string, task: Omit<Task, "id">) => {
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...task, id } : t)));
+  const updateTask = useCallback(async (id: string, task: Omit<Task, "id">) => {
+    try {
+      await axios.put(
+        `${BASE_URL}/api/tasks/${id}`,
+        {
+          mainId: task.mainId,
+          taskRefId: task.taskRefId,
+          taskDescription: task.taskDescription,
+          inProduction: task.inProduction,
+          complexity: task.complexity,
+          classification: task.classification,
+          logDate: task.logDate,
+          planStartDate: task.planStartDate,
+          planEndDate: task.planEndDate,
+          actualStartDate: task.actualStartDate,
+          actualEndDate: task.actualEndDate,
+          plannedHours: task.plannedHours,
+          hoursLogged: task.hoursLogged,
+        },
+        { headers: getAuthHeaders() }
+      );
+      setTasks((prev) => prev.map((t) => (t.id === id ? { ...task, id } : t)));
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        console.error("Update failed:", err.response?.status, err.response?.data);
+      } else {
+        console.error("Update failed:", err);
+      }
+      throw err; 
+    }
   }, []);
 
-  const deleteTask = useCallback((id: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== id));
+  const deleteTask = useCallback(async (id: string) => {
+    try {
+      await axios.delete(`${BASE_URL}/api/tasks/${id}`, {
+        headers: getAuthHeaders(),
+      });
+      setTasks((prev) => prev.filter((t) => t.id !== id));
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        console.error("Delete failed:", err.response?.status, err.response?.data);
+      } else {
+        console.error("Delete failed:", err);
+      }
+      throw err; 
+    }
   }, []);
 
   return (
