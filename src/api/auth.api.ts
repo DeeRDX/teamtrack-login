@@ -11,7 +11,7 @@ interface LoginResponse {
 }
 
 export const login = async (email: string, password: string): Promise<LoginResponse> => {
-  const response = await axiosInstance.post<LoginResponse>("/auth/login", {
+  const response = await axiosInstance.post<LoginResponse>("https://localhost:44352/api/auth/login", {
     email,
     password,
   });

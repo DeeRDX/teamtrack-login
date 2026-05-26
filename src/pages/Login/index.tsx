@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";   // ← useLocation added
 import { useForm } from "react-hook-form";
 import { Eye, EyeOff, BarChart3, AlertCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -17,11 +17,15 @@ interface LoginFormData {
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { token, login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
+  const from =
+    (location.state as { from?: { pathname: string } })?.from?.pathname || "/dashboard";
 
   const {
     register,
@@ -31,9 +35,9 @@ const LoginPage = () => {
 
   useEffect(() => {
     if (token) {
-      navigate("/dashboard", { replace: true });
+      navigate(from, { replace: true });   // ← CHANGED
     }
-  }, [token, navigate]);
+  }, [token, navigate, from]);
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
@@ -41,7 +45,7 @@ const LoginPage = () => {
     try {
       const response = await loginApi(data.email, data.password);
       login(response.user, response.token);
-      navigate("/dashboard", { replace: true });
+      navigate(from, { replace: true });   // ← CHANGED
     } catch {
       setErrorMessage("Authentication Failed");
     } finally {
