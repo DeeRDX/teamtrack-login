@@ -11,6 +11,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   token: string | null;
+  loading: boolean;          // ← ADD THIS
   login: (userData: User, token: string) => void;
   logout: () => void;
 }
@@ -20,6 +21,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);   // ← ADD THIS
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -34,6 +36,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.removeItem("user");
       }
     }
+    setLoading(false);   // ← ADD THIS (runs whether token exists or not)
   }, []);
 
   const loginFn = useCallback((userData: User, newToken: string) => {
@@ -52,7 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [navigate]);
 
   return (
-    <AuthContext.Provider value={{ user, token, login: loginFn, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login: loginFn, logout }}>
       {children}
     </AuthContext.Provider>
   );
