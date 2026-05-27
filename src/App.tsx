@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { TasksProvider } from "@/context/TasksContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import LoginPage from "./pages/Login";
+import SignupPage from "./pages/Signup";
 import DashboardPage from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -24,6 +25,7 @@ const AppRoutes = () => {
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
 
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />
