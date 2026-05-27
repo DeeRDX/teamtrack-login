@@ -231,8 +231,12 @@ const LoginPage = () => {
 
             <p className="text-sm text-center text-muted-foreground">
               Don't have an account?{" "}
-              <button type="button" className="font-semibold text-primary hover:text-primary/80 transition-colors">
-                Start free trial
+              <button
+                type="button"
+                onClick={() => navigate("/signup")}
+                className="font-semibold text-primary hover:text-primary/80 transition-colors"
+              >
+                Sign Up
               </button>
             </p>
           </div>
