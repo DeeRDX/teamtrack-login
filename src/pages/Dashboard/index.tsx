@@ -25,6 +25,7 @@ import {
   Sun,
   UsersRound,
   ShieldCheck,
+  CalendarCheck,
   Loader2,
 } from "lucide-react";
 
@@ -33,7 +34,8 @@ const navItems = [
   { icon: Clock, label: "Timesheet", key: "timesheet" },
   { icon: FileText, label: "Summary", key: "summary" },
   { icon: UsersRound, label: "My Team", key: "myteam" },
-  { icon: CalendarDays, label: "Leaves", key: "leaves" },
+  { icon: CalendarDays, label: "My Leaves", key: "myleaves" },
+  { icon: CalendarCheck, label: "Leave Approvals", key: "leaveapprovals" },
   { icon: BarChart3, label: "Reports", key: "reports" },
   { icon: ShieldCheck, label: "Admin", key: "admin" },
 ];
