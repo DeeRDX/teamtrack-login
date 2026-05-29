@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import LogTaskModal from "@/components/LogTaskModal";
 import TaskEntriesTable from "@/components/TaskEntriesTable";
 import MyTeam from "@/components/MyTeam";
+import MyLeaves from "@/components/MyLeaves";
 import UserAdministration from "@/components/UserAdministration";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import axios from "axios";
@@ -24,6 +25,7 @@ import {
   Sun,
   UsersRound,
   ShieldCheck,
+  CalendarCheck,
   Loader2,
 } from "lucide-react";
 
@@ -32,7 +34,8 @@ const navItems = [
   { icon: Clock, label: "Timesheet", key: "timesheet" },
   { icon: FileText, label: "Summary", key: "summary" },
   { icon: UsersRound, label: "My Team", key: "myteam" },
-  { icon: CalendarDays, label: "Leaves", key: "leaves" },
+  { icon: CalendarDays, label: "My Leaves", key: "myleaves" },
+  { icon: CalendarCheck, label: "Leave Approvals", key: "leaveapprovals" },
   { icon: BarChart3, label: "Reports", key: "reports" },
   { icon: ShieldCheck, label: "Admin", key: "admin" },
 ];
@@ -216,10 +219,11 @@ const DashboardPage = () => {
             </button>
           </div>
         </header>
-
         <main className="flex-1 p-8">
           {activeView === "myteam" ? (
             <MyTeam />
+          ) : activeView === "myleaves" ? (
+            <MyLeaves />
           ) : activeView === "admin" ? (
             <UserAdministration />
           ) : (
