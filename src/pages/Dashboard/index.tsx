@@ -220,10 +220,13 @@ const DashboardPage = () => {
           </div>
         </header>
 
-        <main className="flex-1 p-8">
           {activeView === "myteam" ? (
             <MyTeam />
+          ) : activeView === "myleaves" ? (
+            <MyLeaves />
           ) : activeView === "admin" ? (
+            <UserAdministration />
+          ) : (
             <UserAdministration />
           ) : (
             <>
