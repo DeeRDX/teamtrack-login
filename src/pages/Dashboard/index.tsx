@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import LogTaskModal from "@/components/LogTaskModal";
 import TaskEntriesTable from "@/components/TaskEntriesTable";
 import MyTeam from "@/components/MyTeam";
+import MyLeaves from "@/components/MyLeaves";
 import UserAdministration from "@/components/UserAdministration";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import axios from "axios";
@@ -24,6 +25,7 @@ import {
   Sun,
   UsersRound,
   ShieldCheck,
+  CalendarCheck,
   Loader2,
 } from "lucide-react";
 
@@ -32,7 +34,7 @@ const navItems = [
   { icon: Clock, label: "Timesheet", key: "timesheet" },
   { icon: FileText, label: "Summary", key: "summary" },
   { icon: UsersRound, label: "My Team", key: "myteam" },
-  { icon: CalendarDays, label: "Leaves", key: "leaves" },
+  { icon: CalendarDays, label: "My Leaves", key: "myleaves" },
   { icon: BarChart3, label: "Reports", key: "reports" },
   { icon: ShieldCheck, label: "Admin", key: "admin" },
 ];
@@ -197,9 +199,6 @@ const DashboardPage = () => {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" className="gap-1.5">
-              This Week <ChevronDown className="h-3.5 w-3.5" />
-            </Button>
             <Button size="sm" className="gap-1.5" onClick={() => setLogTaskOpen(true)}>
               <Plus className="h-4 w-4" /> Log Task
             </Button>
@@ -216,10 +215,11 @@ const DashboardPage = () => {
             </button>
           </div>
         </header>
-
         <main className="flex-1 p-8">
           {activeView === "myteam" ? (
             <MyTeam />
+          ) : activeView === "myleaves" ? (
+            <MyLeaves />
           ) : activeView === "admin" ? (
             <UserAdministration />
           ) : (
@@ -282,8 +282,8 @@ const DashboardPage = () => {
             </>
           )}
 
-          {/* Footer Bar */}
-          <Card>
+          
+          {/* <Card>
             <CardContent className="flex items-center justify-between px-6 py-4">
               <div className="flex items-center gap-8">
                 <div className="flex items-center gap-3">
@@ -321,7 +321,7 @@ const DashboardPage = () => {
                 ACTIVE
               </span>
             </CardContent>
-          </Card>
+          </Card> */}
         </main>
       </div>
 

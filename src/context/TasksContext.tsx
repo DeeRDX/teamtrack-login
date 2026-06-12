@@ -31,7 +31,7 @@ const TasksContext = createContext<TasksContextType | null>(null);
 
 const BASE_URL = "https://localhost:44352";
 
-const getAuthHeaders = () => {
+const  getAuthHeaders = () => {
   const token = localStorage.getItem("token");
   return {
     Authorization: `Bearer ${token}`,
