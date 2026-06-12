@@ -35,7 +35,6 @@ const navItems = [
   { icon: FileText, label: "Summary", key: "summary" },
   { icon: UsersRound, label: "My Team", key: "myteam" },
   { icon: CalendarDays, label: "My Leaves", key: "myleaves" },
-  { icon: CalendarCheck, label: "Leave Approvals", key: "leaveapprovals" },
   { icon: BarChart3, label: "Reports", key: "reports" },
   { icon: ShieldCheck, label: "Admin", key: "admin" },
 ];
@@ -200,9 +199,6 @@ const DashboardPage = () => {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" className="gap-1.5">
-              This Week <ChevronDown className="h-3.5 w-3.5" />
-            </Button>
             <Button size="sm" className="gap-1.5" onClick={() => setLogTaskOpen(true)}>
               <Plus className="h-4 w-4" /> Log Task
             </Button>
@@ -286,8 +282,8 @@ const DashboardPage = () => {
             </>
           )}
 
-          {/* Footer Bar */}
-          <Card>
+          
+          {/* <Card>
             <CardContent className="flex items-center justify-between px-6 py-4">
               <div className="flex items-center gap-8">
                 <div className="flex items-center gap-3">
@@ -325,7 +321,7 @@ const DashboardPage = () => {
                 ACTIVE
               </span>
             </CardContent>
-          </Card>
+          </Card> */}
         </main>
       </div>
 

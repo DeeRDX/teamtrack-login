@@ -136,9 +136,6 @@ const UserAdministration = () => {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="gap-1.5">
-              <Filter className="h-4 w-4" /> Bulk Edit
-            </Button>
             <Button size="sm" className="gap-1.5">
               <Plus className="h-4 w-4" /> Add User
             </Button>
