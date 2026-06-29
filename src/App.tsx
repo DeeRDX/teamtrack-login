@@ -5,8 +5,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { TasksProvider } from "@/context/TasksContext";
+import { LeaveProvider } from "@/context/LeaveContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import LoginPage from "./pages/Login";
+import SignupPage from "./pages/Signup";
 import DashboardPage from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -17,20 +19,23 @@ const queryClient = new QueryClient();
 const AppRoutes = () => {
   const { user } = useAuth();
   const userId = (user as any)?.userId ?? null;
-  
 
   return (
     <TasksProvider userId={userId}>
-      <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="/login" element={<LoginPage />} />
-
-        <Route element={<ProtectedRoute />}>
+      <LeaveProvider userId={userId}>
+        <Routes>
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
-        </Route>
 
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+          <Route element={<ProtectedRoute />}>
+
+          </Route>
+
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </LeaveProvider>
     </TasksProvider>
   );
 };
