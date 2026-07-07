@@ -14,6 +14,8 @@ export interface TaskPayload {
   actualEndDate: string;
   plannedHours: number;
   hoursLogged: number;
+  dd: number;
+  th : number;
 }
 
 export interface TaskResponse extends TaskPayload {

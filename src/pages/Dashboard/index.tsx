@@ -2,6 +2,13 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import LogTaskModal from "@/components/LogTaskModal";
 import TaskEntriesTable from "@/components/TaskEntriesTable";
 import MyTeam from "@/components/MyTeam";
@@ -27,6 +34,7 @@ import {
   ShieldCheck,
   CalendarCheck,
   Loader2,
+  Download,
 } from "lucide-react";
 
 const navItems = [
@@ -62,6 +70,8 @@ const DashboardPage = () => {
   const [activeView, setActiveView] = useState<string>("dashboard");
   const [stats, setStats] = useState<UserStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
+  const [exportType, setExportType] = useState<"week" | "month">("week");
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -94,6 +104,43 @@ const DashboardPage = () => {
 
     fetchStats();
   }, [userId]);
+
+  const handleExport = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    setExporting(true);
+    try {
+      const response = await axios.get(
+        `https://localhost:44352/api/tasks/download?type=${exportType}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: "blob",
+        }
+      );
+
+      // Derive filename from Content-Disposition header, or use a default
+      const disposition = response.headers["content-disposition"];
+      let filename = `tasks-${exportType}.xlsx`;
+      if (disposition) {
+        const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (match?.[1]) filename = match[1].replace(/['"]/g, "");
+      }
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Export failed:", err);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const remainingWeekly = stats
     ? Math.max(0, stats.hoursExpectedThisWeek - stats.hoursLoggedThisWeek)
@@ -202,6 +249,41 @@ const DashboardPage = () => {
             <Button size="sm" className="gap-1.5" onClick={() => setLogTaskOpen(true)}>
               <Plus className="h-4 w-4" /> Log Task
             </Button>
+
+            {/* Export controls — only shown on the dashboard view */}
+            {activeView === "dashboard" && (
+              <>
+                <Select
+                  value={exportType}
+                  onValueChange={(val) => setExportType(val as "week" | "month")}
+                >
+                  <SelectTrigger className="h-9 w-36 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="week">This Week</SelectItem>
+                    <SelectItem value="month">This Month</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={handleExport}
+                  disabled={exporting}
+                  title={`Export ${exportType === "week" ? "this week's" : "this month's"} tasks`}
+                >
+                  {exporting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
+                  {exporting ? "Exporting..." : "Export"}
+                </Button>
+              </>
+            )}
+
             <button
               onClick={toggleTheme}
               className="relative ml-1 rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"
@@ -281,47 +363,6 @@ const DashboardPage = () => {
               </div>
             </>
           )}
-
-          
-          {/* <Card>
-            <CardContent className="flex items-center justify-between px-6 py-4">
-              <div className="flex items-center gap-8">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                      Active Asset
-                    </p>
-                    <p className="text-sm font-bold text-foreground">
-                      {stats?.assetName ?? "—"}
-                    </p>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                    Division
-                  </p>
-                  <p className="text-sm font-bold text-foreground">
-                    {stats?.assetFunction ?? "—"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                    Utilization
-                  </p>
-                  <p className="text-sm font-bold text-foreground">
-                    {stats?.dailyHours ?? "—"}h/day
-                  </p>
-                </div>
-              </div>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-semibold text-green-600">
-                <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                ACTIVE
-              </span>
-            </CardContent>
-          </Card> */}
         </main>
       </div>
 

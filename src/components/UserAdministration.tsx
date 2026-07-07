@@ -13,11 +13,25 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import {
   Search,
   Users,
   Building2,
   ShieldCheck,
-  Filter,
   Plus,
   Pencil,
   Trash2,
@@ -27,6 +41,8 @@ import {
   Loader2,
 } from "lucide-react";
 import axios from "axios";
+
+// ── Types ────────────────────────────────────────────────────────────────────
 
 interface AdminUser {
   userId: number;
@@ -44,12 +60,61 @@ interface AdminUser {
   hoursThisMonth: number;
 }
 
-// Map hierarchy level to a display label + style
+interface RoleOption {
+  roleId: number;
+  roleName: string;
+}
+
+interface TeamOption {
+  teamId: number;
+  teamName: string;
+}
+
+interface AssetOption {
+  assetId: number;
+  assetName: string;
+}
+
+interface SignupPayload {
+  fullName: string;
+  email: string;
+  enumber: string;
+  password: string;
+  confirmPassword: string;
+  role_id: number;
+  team_id: number;
+  asset_id: number;
+}
+
+interface AddUserForm {
+  fullName: string;
+  email: string;
+  enumber: string;
+  password: string;
+  confirmPassword: string;
+  role_id: string;
+  team_id: string;
+  asset_id: string;
+}
+
+const EMPTY_FORM: AddUserForm = {
+  fullName: "",
+  email: "",
+  enumber: "",
+  password: "",
+  confirmPassword: "",
+  role_id: "",
+  team_id: "",
+  asset_id: "",
+};
+
+// ── Hierarchy level styling ───────────────────────────────────────────────────
+
 const levelStyleMap: Record<number, { label: string; className: string }> = {
-  1: { label: "L1 – Director",   className: "bg-primary/10 text-primary border-primary/20" },
-  2: { label: "L2 – Manager",    className: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
-  3: { label: "L3 – Senior",     className: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
-  4: { label: "L4 – Staff",      className: "bg-pink-500/10 text-pink-600 border-pink-500/20" },
+  1: { label: "L1 – Director",  className: "bg-primary/10 text-primary border-primary/20" },
+  2: { label: "L2 – Manager",   className: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
+  3: { label: "L3 – Senior",    className: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
+  4: { label: "L4 – Staff",     className: "bg-pink-500/10 text-pink-600 border-pink-500/20" },
 };
 
 const getLevelStyle = (level: number) =>
@@ -59,21 +124,37 @@ const getLevelStyle = (level: number) =>
   };
 
 const PAGE_SIZE = 10;
+const BASE_URL = "https://localhost:44352";
+
+// ── Component ────────────────────────────────────────────────────────────────
 
 const UserAdministration = () => {
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [query, setQuery] = useState("");
-  const [page, setPage] = useState(1);
+  const [users, setUsers]       = useState<AdminUser[]>([]);
+  const [loading, setLoading]   = useState(false);
+  const [query, setQuery]       = useState("");
+  const [page, setPage]         = useState(1);
 
-  // ── Fetch all users ──────────────────────────────────────────────────────
+  // Modal state
+  const [modalOpen, setModalOpen]         = useState(false);
+  const [form, setForm]                   = useState<AddUserForm>(EMPTY_FORM);
+  const [formErrors, setFormErrors]       = useState<Partial<AddUserForm>>({});
+  const [submitting, setSubmitting]       = useState(false);
+  const [submitError, setSubmitError]     = useState<string | null>(null);
+
+  // Dropdown options
+  const [roles, setRoles]   = useState<RoleOption[]>([]);
+  const [teams, setTeams]   = useState<TeamOption[]>([]);
+  const [assets, setAssets] = useState<AssetOption[]>([]);
+  const [dropdownLoading, setDropdownLoading] = useState(false);
+
+  // ── Fetch all users ────────────────────────────────────────────────────────
   useEffect(() => {
     const fetchUsers = async () => {
       const token = localStorage.getItem("token");
       if (!token) return;
       setLoading(true);
       try {
-        const { data } = await axios.get("https://localhost:44352/api/admin/allusers", {
+        const { data } = await axios.get(`${BASE_URL}/api/admin/allusers`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setUsers(data);
@@ -86,7 +167,99 @@ const UserAdministration = () => {
     fetchUsers();
   }, []);
 
-  // ── Toggle active status locally (wire to API if needed) ─────────────────
+  // ── Fetch dropdown options when modal opens ────────────────────────────────
+  const openAddUserModal = async () => {
+    setForm(EMPTY_FORM);
+    setFormErrors({});
+    setSubmitError(null);
+    setModalOpen(true);
+
+    if (roles.length && teams.length && assets.length) return; // already fetched
+
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    setDropdownLoading(true);
+    try {
+      const [rolesRes, teamsRes, assetsRes] = await Promise.all([
+        axios.get(`${BASE_URL}/api/admin/roles`,  { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${BASE_URL}/api/admin/teams`,  { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${BASE_URL}/api/admin/assets`, { headers: { Authorization: `Bearer ${token}` } }),
+      ]);
+      setRoles(rolesRes.data);
+      setTeams(teamsRes.data);
+      setAssets(assetsRes.data);
+    } catch (err) {
+      console.error("Failed to fetch dropdown options:", err);
+    } finally {
+      setDropdownLoading(false);
+    }
+  };
+
+  // ── Form field helpers ─────────────────────────────────────────────────────
+  const setField = (field: keyof AddUserForm, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    setFormErrors((prev) => ({ ...prev, [field]: undefined }));
+    setSubmitError(null);
+  };
+
+  const validate = (): boolean => {
+    const errors: Partial<AddUserForm> = {};
+    if (!form.fullName.trim())        errors.fullName        = "Full name is required.";
+    if (!form.email.trim())           errors.email           = "Email is required.";
+    if (!form.enumber.trim())         errors.enumber         = "Employee number is required.";
+    if (!form.password)               errors.password        = "Password is required.";
+    if (form.password !== form.confirmPassword)
+                                      errors.confirmPassword = "Passwords do not match.";
+    if (!form.role_id)                errors.role_id         = "Please select a role.";
+    if (!form.team_id)                errors.team_id         = "Please select a team.";
+    if (!form.asset_id)               errors.asset_id        = "Please select an asset.";
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // ── Submit signup ──────────────────────────────────────────────────────────
+  const handleAddUser = async () => {
+    if (!validate()) return;
+
+    const token = localStorage.getItem("token");
+    setSubmitting(true);
+    setSubmitError(null);
+
+    const payload: SignupPayload = {
+      fullName:        form.fullName.trim(),
+      email:           form.email.trim(),
+      enumber:         form.enumber.trim(),
+      password:        form.password,
+      confirmPassword: form.confirmPassword,
+      role_id:         Number(form.role_id),
+      team_id:         Number(form.team_id),
+      asset_id:        Number(form.asset_id),
+    };
+
+    try {
+      await axios.post(`${BASE_URL}/api/auth/signup`, payload, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+
+      // Refresh user list
+      const { data } = await axios.get(`${BASE_URL}/api/admin/allusers`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setUsers(data);
+      setModalOpen(false);
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.title ||
+        "Failed to create user. Please try again.";
+      setSubmitError(typeof msg === "string" ? msg : JSON.stringify(msg));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ── Toggle / remove helpers ────────────────────────────────────────────────
   const toggleActive = (userId: number) =>
     setUsers((prev) =>
       prev.map((u) => (u.userId === userId ? { ...u, isActive: !u.isActive } : u)),
@@ -95,12 +268,12 @@ const UserAdministration = () => {
   const removeUser = (userId: number) =>
     setUsers((prev) => prev.filter((u) => u.userId !== userId));
 
-  // ── Derived stats ────────────────────────────────────────────────────────
-  const totalUsers = users.length;
+  // ── Derived stats ──────────────────────────────────────────────────────────
+  const totalUsers  = users.length;
   const activeCount = users.filter((u) => u.isActive).length;
-  const activePct = totalUsers > 0 ? Math.round((activeCount / totalUsers) * 100) : 0;
+  const activePct   = totalUsers > 0 ? Math.round((activeCount / totalUsers) * 100) : 0;
 
-  // ── Search + pagination ──────────────────────────────────────────────────
+  // ── Search + pagination ────────────────────────────────────────────────────
   const filtered = useMemo(
     () =>
       users.filter((u) =>
@@ -113,13 +286,14 @@ const UserAdministration = () => {
   );
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const handleQueryChange = (val: string) => {
     setQuery(val);
-    setPage(1); // reset to first page on search
+    setPage(1);
   };
 
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
       {/* Heading */}
@@ -136,7 +310,7 @@ const UserAdministration = () => {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button size="sm" className="gap-1.5">
+            <Button size="sm" className="gap-1.5" onClick={openAddUserModal}>
               <Plus className="h-4 w-4" /> Add User
             </Button>
           </div>
@@ -145,7 +319,6 @@ const UserAdministration = () => {
 
       {/* Filter / stat cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        {/* Search */}
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -165,7 +338,6 @@ const UserAdministration = () => {
           </CardContent>
         </Card>
 
-        {/* Department placeholder */}
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
@@ -180,7 +352,6 @@ const UserAdministration = () => {
           </CardContent>
         </Card>
 
-        {/* Total + Active */}
         <div className="grid grid-cols-2 gap-4">
           <Card>
             <CardContent className="flex items-center gap-3 p-4">
@@ -251,12 +422,10 @@ const UserAdministration = () => {
                   const level = getLevelStyle(u.hierarchyLevel);
                   return (
                     <TableRow key={u.userId}>
-                      {/* Employee # */}
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {u.enumber}
                       </TableCell>
 
-                      {/* Name + email */}
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
@@ -269,7 +438,6 @@ const UserAdministration = () => {
                         </div>
                       </TableCell>
 
-                      {/* Role + team */}
                       <TableCell>
                         <Badge
                           variant="outline"
@@ -280,7 +448,6 @@ const UserAdministration = () => {
                         <p className="text-xs text-muted-foreground">{u.teamName}</p>
                       </TableCell>
 
-                      {/* Asset + manager */}
                       <TableCell className="text-xs text-muted-foreground">
                         <p>
                           <span className="font-medium text-foreground">Asset:</span>{" "}
@@ -292,7 +459,6 @@ const UserAdministration = () => {
                         </p>
                       </TableCell>
 
-                      {/* Tasks + hours this month */}
                       <TableCell className="text-xs text-muted-foreground">
                         <p>
                           <span className="font-medium text-foreground">{u.tasksThisMonth}</span>{" "}
@@ -304,7 +470,6 @@ const UserAdministration = () => {
                         </p>
                       </TableCell>
 
-                      {/* Active toggle */}
                       <TableCell>
                         <Switch
                           checked={u.isActive}
@@ -312,7 +477,6 @@ const UserAdministration = () => {
                         />
                       </TableCell>
 
-                      {/* Actions */}
                       <TableCell>
                         <div className="flex gap-2">
                           <button className="rounded-md border border-border p-1.5 text-primary hover:bg-primary/10">
@@ -401,6 +565,236 @@ const UserAdministration = () => {
           <BadgeCheck className="h-16 w-16 text-primary/20" />
         </CardContent>
       </Card>
+
+      {/* ── Add User Modal ──────────────────────────────────────────────────── */}
+      <Dialog open={modalOpen} onOpenChange={(open) => !submitting && setModalOpen(open)}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Add New User
+            </DialogTitle>
+          </DialogHeader>
+
+          {dropdownLoading ? (
+            <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading form options...
+            </div>
+          ) : (
+            <div className="grid gap-4 py-2">
+              {/* Row 1: Full Name + Employee Number */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="fullName" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Full Name <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="fullName"
+                    placeholder="e.g. Ankush Singh"
+                    value={form.fullName}
+                    onChange={(e) => setField("fullName", e.target.value)}
+                    className={formErrors.fullName ? "border-destructive" : ""}
+                  />
+                  {formErrors.fullName && (
+                    <p className="text-[11px] text-destructive">{formErrors.fullName}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="enumber" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Employee # <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="enumber"
+                    placeholder="e.g. E00123"
+                    value={form.enumber}
+                    onChange={(e) => setField("enumber", e.target.value)}
+                    className={`font-mono ${formErrors.enumber ? "border-destructive" : ""}`}
+                  />
+                  {formErrors.enumber && (
+                    <p className="text-[11px] text-destructive">{formErrors.enumber}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Email */}
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Email Address <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="e.g. ankush@ergo.com"
+                  value={form.email}
+                  onChange={(e) => setField("email", e.target.value)}
+                  className={formErrors.email ? "border-destructive" : ""}
+                />
+                {formErrors.email && (
+                  <p className="text-[11px] text-destructive">{formErrors.email}</p>
+                )}
+              </div>
+
+              {/* Row 2: Password + Confirm Password */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="password" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Password <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={form.password}
+                    onChange={(e) => setField("password", e.target.value)}
+                    className={formErrors.password ? "border-destructive" : ""}
+                  />
+                  {formErrors.password && (
+                    <p className="text-[11px] text-destructive">{formErrors.password}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="confirmPassword" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Confirm Password <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    placeholder="••••••••"
+                    value={form.confirmPassword}
+                    onChange={(e) => setField("confirmPassword", e.target.value)}
+                    className={formErrors.confirmPassword ? "border-destructive" : ""}
+                  />
+                  {formErrors.confirmPassword && (
+                    <p className="text-[11px] text-destructive">{formErrors.confirmPassword}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="border-t border-border pt-1">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Organisation Details
+                </p>
+              </div>
+
+              {/* Row 3: Role + Team */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Role <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={form.role_id}
+                    onValueChange={(val) => setField("role_id", val)}
+                  >
+                    <SelectTrigger className={formErrors.role_id ? "border-destructive" : ""}>
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {roles.map((r) => (
+                        <SelectItem key={r.roleId} value={String(r.roleId)}>
+                          {r.roleName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {formErrors.role_id && (
+                    <p className="text-[11px] text-destructive">{formErrors.role_id}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Team <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={form.team_id}
+                    onValueChange={(val) => setField("team_id", val)}
+                  >
+                    <SelectTrigger className={formErrors.team_id ? "border-destructive" : ""}>
+                      <SelectValue placeholder="Select team" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {teams.map((t) => (
+                        <SelectItem key={t.teamId} value={String(t.teamId)}>
+                          {t.teamName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {formErrors.team_id && (
+                    <p className="text-[11px] text-destructive">{formErrors.team_id}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Asset */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Asset <span className="text-destructive">*</span>
+                </Label>
+                <Select
+                  value={form.asset_id}
+                  onValueChange={(val) => setField("asset_id", val)}
+                >
+                  <SelectTrigger className={formErrors.asset_id ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Select asset" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {assets.map((a) => (
+                      <SelectItem key={a.assetId} value={String(a.assetId)}>
+                        {a.assetName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formErrors.asset_id && (
+                  <p className="text-[11px] text-destructive">{formErrors.asset_id}</p>
+                )}
+              </div>
+
+              {/* API error banner */}
+              {submitError && (
+                <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                  {submitError}
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setModalOpen(false)}
+              disabled={submitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleAddUser}
+              disabled={submitting || dropdownLoading}
+              className="gap-1.5"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4" />
+                  Create User
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

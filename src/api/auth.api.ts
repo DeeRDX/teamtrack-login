@@ -24,6 +24,9 @@ export interface SignupPayload {
   enumber: string;
   password: string;
   confirmPassword: string;
+  role_id: string | null;
+  team_id: string |null;
+  asset_id: string |null;
 }
 
 export const signup = async (payload: SignupPayload) => {

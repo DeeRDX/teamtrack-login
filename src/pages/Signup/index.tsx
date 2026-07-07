@@ -14,6 +14,10 @@ interface SignupFormData {
   enumber: string;
   password: string;
   confirmPassword: string;
+  role_id: string | null;
+  team_id: string |null;
+  asset_id: string |null;
+  
 }
 
 const SignupPage = () => {

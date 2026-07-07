@@ -48,6 +48,8 @@ interface FormState {
   actualEndDate: string;
   plannedHours: string;
   hoursLogged: string;
+  dd:number;
+  th:number;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -66,6 +68,9 @@ const emptyForm: FormState = {
   actualEndDate: today(),
   plannedHours: "0",
   hoursLogged: "0",
+  dd:0,
+  th:0
+
 };
 
 const PRESET_OPTIONS = [
@@ -194,6 +199,8 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
         actualEndDate: editingTask.actualEndDate ?? today(),
         plannedHours: String(editingTask.plannedHours ?? 0),
         hoursLogged: String(editingTask.hoursLogged ?? 0),
+        dd : 0,
+        th : 0
       });
     } else {
       setFormData(emptyForm);
@@ -219,6 +226,8 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
       actualEndDate: formData.actualEndDate,
       plannedHours: Number(formData.plannedHours) || 0,
       hoursLogged: Number(formData.hoursLogged) || 0,
+      dd : 0,
+      th : 0
     };
 
     setSaving(true);
