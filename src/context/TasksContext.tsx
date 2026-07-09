@@ -115,6 +115,8 @@ export const TasksProvider: React.FC<{
           actualEndDate: task.actualEndDate,
           plannedHours: task.plannedHours,
           hoursLogged: task.hoursLogged,
+          dd: 0,
+          th : 0
         },
         { headers: getAuthHeaders() }
       );

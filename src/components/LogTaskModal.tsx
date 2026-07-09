@@ -183,6 +183,7 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
   const [formData, setFormData] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
 
+
   useEffect(() => {
     if (editingTask) {
       setFormData({
@@ -206,6 +207,8 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
       setFormData(emptyForm);
     }
   }, [editingTask, open]);
+
+
 
   const handleChange = <K extends keyof FormState>(field: K, value: FormState[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -231,6 +234,7 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
     };
 
     setSaving(true);
+    console.log(editingTask.id);
     try {
       if (editingTask) {
         await updateTaskApi(editingTask.id, payload);
