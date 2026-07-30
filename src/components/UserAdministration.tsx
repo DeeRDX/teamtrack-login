@@ -124,7 +124,8 @@ const getLevelStyle = (level: number) =>
   };
 
 const PAGE_SIZE = 10;
-const BASE_URL = "https://localhost:44352";
+//const BASE_URL = "https://localhost:44352";
+const BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "https://localhost:44352/api").replace(/\/api$/, "");
 
 // ── Component ────────────────────────────────────────────────────────────────
 

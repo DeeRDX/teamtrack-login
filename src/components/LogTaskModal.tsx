@@ -234,7 +234,7 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
     };
 
     setSaving(true);
-    console.log(editingTask.id);
+    //console.log(editingTask.id);
     try {
       if (editingTask) {
         await updateTaskApi(editingTask.id, payload);

@@ -29,7 +29,7 @@ interface TasksContextType {
 
 const TasksContext = createContext<TasksContextType | null>(null);
 
-const BASE_URL = "https://localhost:44352";
+const BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "https://localhost:44352/api").replace(/\/api$/, "");
 
 const  getAuthHeaders = () => {
   const token = localStorage.getItem("token");

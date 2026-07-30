@@ -11,7 +11,7 @@ interface LoginResponse {
 }
 
 export const login = async (email: string, password: string): Promise<LoginResponse> => {
-  const response = await axiosInstance.post<LoginResponse>("https://localhost:44352/api/auth/login", {
+  const response = await axiosInstance.post<LoginResponse>("/auth/login", {
     email,
     password,
   });
@@ -30,6 +30,6 @@ export interface SignupPayload {
 }
 
 export const signup = async (payload: SignupPayload) => {
-  const response = await axiosInstance.post("https://localhost:44352/api/auth/signup", payload);
+  const response = await axiosInstance.post("/auth/signup", payload);
   return response.data;
 };

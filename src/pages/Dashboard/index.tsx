@@ -1,3 +1,4 @@
+import axiosInstance from "@/api/axios";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -15,7 +16,6 @@ import MyTeam from "@/components/MyTeam";
 import MyLeaves from "@/components/MyLeaves";
 import UserAdministration from "@/components/UserAdministration";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import axios from "axios";
 import {
   Users,
   LogOut,
@@ -36,6 +36,7 @@ import {
   Loader2,
   Download,
 } from "lucide-react";
+
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", key: "dashboard" },
@@ -81,7 +82,7 @@ const DashboardPage = () => {
 
       setStatsLoading(true);
       try {
-        const { data } = await axios.get(`https://localhost:44352/api/users/${userId}`, {
+        const { data } = await axiosInstance.get(`/users/${userId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -111,13 +112,13 @@ const DashboardPage = () => {
 
     setExporting(true);
     try {
-      const response = await axios.get(
-        `https://localhost:44352/api/tasks/download?type=${exportType}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          responseType: "blob",
-        }
-      );
+      const response = await axiosInstance.get(
+  `/tasks/download?type=${exportType}`,
+  {
+    headers: { Authorization: `Bearer ${token}` },
+    responseType: "blob",
+  }
+);
 
       // Derive filename from Content-Disposition header, or use a default
       const disposition = response.headers["content-disposition"];
