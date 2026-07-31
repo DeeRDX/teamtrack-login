@@ -308,6 +308,8 @@ const DashboardPage = () => {
             <MyLeaves />
           ) : activeView === "admin" ? (
             <UserAdministration />
+          ) : activeView === "assetadmin" ? (
+            <AssetAdministration />
           ) : (
             <>
               {/* Stats Cards */}
