@@ -213,7 +213,7 @@ const UserAdministration = () => {
     if (form.password !== form.confirmPassword)
                                       errors.confirmPassword = "Passwords do not match.";
     if (!form.role_id)                errors.role_id         = "Please select a role.";
-    if (!form.team_id)                errors.team_id         = "Please select a team.";
+    // if (!form.team_id)                errors.team_id         = "Please select a team.";
     if (!form.asset_id)               errors.asset_id        = "Please select an asset.";
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
