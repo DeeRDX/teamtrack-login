@@ -15,6 +15,7 @@ import TaskEntriesTable from "@/components/TaskEntriesTable";
 import MyTeam from "@/components/MyTeam";
 import MyLeaves from "@/components/MyLeaves";
 import UserAdministration from "@/components/UserAdministration";
+import AssetAdministration from "@/components/AssetAdministration";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Users,
@@ -35,6 +36,7 @@ import {
   CalendarCheck,
   Loader2,
   Download,
+  Boxes,
 } from "lucide-react";
 
 
@@ -46,6 +48,7 @@ const navItems = [
   { icon: CalendarDays, label: "My Leaves", key: "myleaves" },
   { icon: BarChart3, label: "Reports", key: "reports" },
   { icon: ShieldCheck, label: "Admin", key: "admin" },
+  { icon: Boxes, label: "Asset Admin", key: "assetadmin" },
 ];
 
 interface UserStats {
@@ -305,6 +308,8 @@ const DashboardPage = () => {
             <MyLeaves />
           ) : activeView === "admin" ? (
             <UserAdministration />
+          ) : activeView === "assetadmin" ? (
+            <AssetAdministration />
           ) : (
             <>
               {/* Stats Cards */}
