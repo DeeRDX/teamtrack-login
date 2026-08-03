@@ -16,6 +16,7 @@ import MyTeam from "@/components/MyTeam";
 import MyLeaves from "@/components/MyLeaves";
 import UserAdministration from "@/components/UserAdministration";
 import AssetAdministration from "@/components/AssetAdministration";
+import TeamAdministration from "@/components/TeamAdministration";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Users,
@@ -49,6 +50,7 @@ const navItems = [
   { icon: BarChart3, label: "Reports", key: "reports" },
   { icon: ShieldCheck, label: "Admin", key: "admin" },
   { icon: Boxes, label: "Asset Admin", key: "assetadmin" },
+  { icon: UsersRound, label: "Team Admin", key: "teamadmin" },
 ];
 
 interface UserStats {
@@ -310,6 +312,9 @@ const DashboardPage = () => {
             <UserAdministration />
           ) : activeView === "assetadmin" ? (
             <AssetAdministration />
+          ) : activeView === "teamadmin" ? (
+            <TeamAdministration />
+
           ) : (
             <>
               {/* Stats Cards */}
