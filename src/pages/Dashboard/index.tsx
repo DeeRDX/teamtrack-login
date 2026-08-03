@@ -312,6 +312,9 @@ const DashboardPage = () => {
             <UserAdministration />
           ) : activeView === "assetadmin" ? (
             <AssetAdministration />
+          ) : activeView === "teamadmin" ? (
+            <TeamAdministration />
+
           ) : (
             <>
               {/* Stats Cards */}
