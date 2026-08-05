@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import axiosInstance from "@/api/axios";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,77 +35,62 @@ import {
   Trash2,
   Clock,
 } from "lucide-react";
-import axios from "axios";
-
-// ── Types ────────────────────────────────────────────────────────────────────
-
+ 
 interface AdminTeam {
   teamId: number;
   teamName: string;
   assetId?: number | null;
   assetName?: string | null;
-  tdhName?: string | null;
+  tdhUserId?: number | null;
+  tdhUserName?: string | null;
   dailyHours?: number | null;
   memberCount?: number;
 }
-
+ 
 interface AssetOption {
   assetId: number;
   assetName: string;
 }
-
+ 
 interface UserOption {
   userId: number;
   fullName: string;
 }
-
+ 
 interface TeamForm {
   assetId: string;
   teamName: string;
   dailyHours: string;
-  tdhId: string;
+  tdhUserId: string;
 }
-
+ 
 const EMPTY_FORM: TeamForm = {
   assetId: "",
   teamName: "",
   dailyHours: "8.5",
-  tdhId: "",
+  tdhUserId: "",
 };
-
-const BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL ?? "https://localhost:44352/api"
-).replace(/\/api$/, "");
-
-// ── Component ────────────────────────────────────────────────────────────────
-
+ 
 const TeamAdministration = () => {
   const [teams, setTeams] = useState<AdminTeam[]>([]);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
   const [assetFilter, setAssetFilter] = useState<string>("all");
-
+ 
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<TeamForm>(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState<Partial<TeamForm>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-
+ 
   const [assets, setAssets] = useState<AssetOption[]>([]);
   const [users, setUsers] = useState<UserOption[]>([]);
   const [dropdownLoading, setDropdownLoading] = useState(false);
-
-  const authHeader = () => {
-    const token = localStorage.getItem("token");
-    return token ? { Authorization: `Bearer ${token}` } : undefined;
-  };
-
+ 
   const fetchTeams = async () => {
     setLoading(true);
     try {
-      const { data } = await axios.get(`${BASE_URL}/api/admin/teams`, {
-        headers: authHeader(),
-      });
+      const { data } = await axiosInstance.get<AdminTeam[]>("/admin/teams");
       setTeams(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Failed to fetch teams:", err);
@@ -112,12 +98,10 @@ const TeamAdministration = () => {
       setLoading(false);
     }
   };
-
+ 
   const fetchAssets = async () => {
     try {
-      const { data } = await axios.get(`${BASE_URL}/api/admin/assets`, {
-        headers: authHeader(),
-      });
+      const { data } = await axiosInstance.get<any[]>("/admin/assets");
       setAssets(
         (Array.isArray(data) ? data : []).map((a: any) => ({
           assetId: a.assetId,
@@ -128,25 +112,23 @@ const TeamAdministration = () => {
       console.error("Failed to fetch assets:", err);
     }
   };
-
+ 
   useEffect(() => {
     fetchTeams();
     fetchAssets();
   }, []);
-
+ 
   const openAddTeamModal = async () => {
     setForm(EMPTY_FORM);
     setFormErrors({});
     setSubmitError(null);
     setModalOpen(true);
-
+ 
     if (users.length && assets.length) return;
-
+ 
     setDropdownLoading(true);
     try {
-      const requests: Promise<any>[] = [
-        axios.get(`${BASE_URL}/api/admin/allusers`, { headers: authHeader() }),
-      ];
+      const requests: Promise<any>[] = [axiosInstance.get<UserOption[]>("/admin/allusers")];
       if (!assets.length) requests.push(fetchAssets());
       const [usersRes] = await Promise.all(requests);
       setUsers(
@@ -161,13 +143,13 @@ const TeamAdministration = () => {
       setDropdownLoading(false);
     }
   };
-
+ 
   const setField = (field: keyof TeamForm, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setFormErrors((prev) => ({ ...prev, [field]: undefined }));
     setSubmitError(null);
   };
-
+ 
   const validate = () => {
     const errors: Partial<TeamForm> = {};
     if (!form.assetId) errors.assetId = "Please select an asset.";
@@ -178,23 +160,21 @@ const TeamAdministration = () => {
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
-
+ 
   const handleCreateTeam = async () => {
     if (!validate()) return;
     setSubmitting(true);
     setSubmitError(null);
-
+ 
     const payload = {
       assetId: Number(form.assetId),
       teamName: form.teamName.trim(),
       dailyHours: Number(form.dailyHours),
-      tdhId: form.tdhId ? Number(form.tdhId) : null,
+      tdhUserId: form.tdhUserId ? Number(form.tdhUserId) : null,
     };
-
+ 
     try {
-      await axios.post(`${BASE_URL}/api/admin/teams`, payload, {
-        headers: authHeader(),
-      });
+      await axiosInstance.post("/admin/teams", payload);
       await fetchTeams();
       setModalOpen(false);
     } catch (err: any) {
@@ -207,14 +187,16 @@ const TeamAdministration = () => {
       setSubmitting(false);
     }
   };
-
+ 
+  // Note: no DELETE /api/admin/teams/{id} endpoint exists on the backend yet —
+  // this only removes the row locally. Let me know if you want that endpoint added.
   const removeTeam = (teamId: number) =>
     setTeams((prev) => prev.filter((t) => t.teamId !== teamId));
-
+ 
   const filtered = useMemo(
     () =>
       teams.filter((t) => {
-        const matchesQuery = [t.teamName, t.assetName, t.tdhName]
+        const matchesQuery = [t.teamName, t.assetName, t.tdhUserName]
           .filter(Boolean)
           .join(" ")
           .toLowerCase()
@@ -225,7 +207,7 @@ const TeamAdministration = () => {
       }),
     [teams, query, assetFilter],
   );
-
+ 
   return (
     <div className="space-y-6">
       {/* Heading */}
@@ -245,7 +227,7 @@ const TeamAdministration = () => {
           </Button>
         </div>
       </div>
-
+ 
       {/* Filter / stat cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Card>
@@ -266,7 +248,7 @@ const TeamAdministration = () => {
             </div>
           </CardContent>
         </Card>
-
+ 
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10">
@@ -292,7 +274,7 @@ const TeamAdministration = () => {
             </div>
           </CardContent>
         </Card>
-
+ 
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500/10">
@@ -309,7 +291,7 @@ const TeamAdministration = () => {
           </CardContent>
         </Card>
       </div>
-
+ 
       {/* Table */}
       <Card>
         <CardContent className="p-0">
@@ -358,7 +340,7 @@ const TeamAdministration = () => {
                       </span>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {t.tdhName || "—"}
+                      {t.tdhUserName || "—"}
                     </TableCell>
                     <TableCell>
                       <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -387,7 +369,7 @@ const TeamAdministration = () => {
           </Table>
         </CardContent>
       </Card>
-
+ 
       {/* ── Add Team Modal ──────────────────────────────────────────────────── */}
       <Dialog open={modalOpen} onOpenChange={(open) => !submitting && setModalOpen(open)}>
         <DialogContent className="sm:max-w-[480px]">
@@ -397,7 +379,7 @@ const TeamAdministration = () => {
               Add New Team
             </DialogTitle>
           </DialogHeader>
-
+ 
           {dropdownLoading ? (
             <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -428,7 +410,7 @@ const TeamAdministration = () => {
                   <p className="text-[11px] text-destructive">{formErrors.assetId}</p>
                 )}
               </div>
-
+ 
               <div className="space-y-1.5">
                 <Label htmlFor="teamName" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Team Name <span className="text-destructive">*</span>
@@ -444,7 +426,7 @@ const TeamAdministration = () => {
                   <p className="text-[11px] text-destructive">{formErrors.teamName}</p>
                 )}
               </div>
-
+ 
               <div className="space-y-1.5">
                 <Label htmlFor="dailyHours" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Daily Hours <span className="text-destructive">*</span>
@@ -464,12 +446,12 @@ const TeamAdministration = () => {
                   <p className="text-[11px] text-destructive">{formErrors.dailyHours}</p>
                 )}
               </div>
-
+ 
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Team Department Head (TDH)
                 </Label>
-                <Select value={form.tdhId} onValueChange={(val) => setField("tdhId", val)}>
+                <Select value={form.tdhUserId} onValueChange={(val) => setField("tdhUserId", val)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select TDH (optional)" />
                   </SelectTrigger>
@@ -482,7 +464,7 @@ const TeamAdministration = () => {
                   </SelectContent>
                 </Select>
               </div>
-
+ 
               {submitError && (
                 <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
                   {submitError}
@@ -490,7 +472,7 @@ const TeamAdministration = () => {
               )}
             </div>
           )}
-
+ 
           <DialogFooter className="gap-2 pt-2">
             <Button
               variant="outline"
@@ -524,5 +506,5 @@ const TeamAdministration = () => {
     </div>
   );
 };
-
+ 
 export default TeamAdministration;

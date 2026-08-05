@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import axiosInstance from "@/api/axios";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,7 +41,6 @@ import {
   BadgeCheck,
   Loader2,
 } from "lucide-react";
-import axios from "axios";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -68,11 +68,17 @@ interface RoleOption {
 interface TeamOption {
   teamId: number;
   teamName: string;
+  assetId: number | null;
 }
 
 interface AssetOption {
   assetId: number;
   assetName: string;
+}
+
+interface ManagerOption {
+  userId: number;
+  fullName: string;
 }
 
 interface SignupPayload {
@@ -81,9 +87,10 @@ interface SignupPayload {
   enumber: string;
   password: string;
   confirmPassword: string;
-  role_id: number;
-  team_id: number;
-  asset_id: number;
+  roleId: number;
+  teamId: number | null;
+  assetId: number | null;
+  managerId: number | null;
 }
 
 interface AddUserForm {
@@ -95,6 +102,7 @@ interface AddUserForm {
   role_id: string;
   team_id: string;
   asset_id: string;
+  manager_id: string;
 }
 
 const EMPTY_FORM: AddUserForm = {
@@ -106,6 +114,7 @@ const EMPTY_FORM: AddUserForm = {
   role_id: "",
   team_id: "",
   asset_id: "",
+  manager_id: "",
 };
 
 // ── Hierarchy level styling ───────────────────────────────────────────────────
@@ -124,8 +133,6 @@ const getLevelStyle = (level: number) =>
   };
 
 const PAGE_SIZE = 10;
-//const BASE_URL = "https://localhost:44352";
-const BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "https://localhost:44352/api").replace(/\/api$/, "");
 
 // ── Component ────────────────────────────────────────────────────────────────
 
@@ -143,28 +150,26 @@ const UserAdministration = () => {
   const [submitError, setSubmitError]     = useState<string | null>(null);
 
   // Dropdown options
-  const [roles, setRoles]   = useState<RoleOption[]>([]);
-  const [teams, setTeams]   = useState<TeamOption[]>([]);
-  const [assets, setAssets] = useState<AssetOption[]>([]);
+  const [roles, setRoles]       = useState<RoleOption[]>([]);
+  const [teams, setTeams]       = useState<TeamOption[]>([]);
+  const [assets, setAssets]     = useState<AssetOption[]>([]);
+  const [managers, setManagers] = useState<ManagerOption[]>([]);
   const [dropdownLoading, setDropdownLoading] = useState(false);
 
   // ── Fetch all users ────────────────────────────────────────────────────────
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const { data } = await axiosInstance.get<AdminUser[]>("/admin/allusers");
+      setUsers(data);
+    } catch (err) {
+      console.error("Failed to fetch users:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchUsers = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) return;
-      setLoading(true);
-      try {
-        const { data } = await axios.get(`${BASE_URL}/api/admin/allusers`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setUsers(data);
-      } catch (err) {
-        console.error("Failed to fetch users:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchUsers();
   }, []);
 
@@ -175,21 +180,31 @@ const UserAdministration = () => {
     setSubmitError(null);
     setModalOpen(true);
 
-    if (roles.length && teams.length && assets.length) return; // already fetched
-
-    const token = localStorage.getItem("token");
-    if (!token) return;
+    if (roles.length && teams.length && assets.length && managers.length) return; // already fetched
 
     setDropdownLoading(true);
     try {
-      const [rolesRes, teamsRes, assetsRes] = await Promise.all([
-        axios.get(`${BASE_URL}/api/admin/roles`,  { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${BASE_URL}/api/admin/teams`,  { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${BASE_URL}/api/admin/assets`, { headers: { Authorization: `Bearer ${token}` } }),
+      const [rolesRes, teamsRes, assetsRes, usersRes] = await Promise.all([
+        axiosInstance.get<RoleOption[]>("/admin/roles"),
+        axiosInstance.get<TeamOption[]>("/admin/teams"),
+        axiosInstance.get<AssetOption[]>("/admin/assets"),
+        axiosInstance.get<any[]>("/admin/allusers"), // reused as manager candidates
       ]);
       setRoles(rolesRes.data);
-      setTeams(teamsRes.data);
+      setTeams(
+        (Array.isArray(teamsRes.data) ? teamsRes.data : []).map((t: any) => ({
+          teamId: t.teamId,
+          teamName: t.teamName,
+          assetId: t.assetId ?? null,
+        })),
+      );
       setAssets(assetsRes.data);
+      setManagers(
+        (Array.isArray(usersRes.data) ? usersRes.data : []).map((u: any) => ({
+          userId: u.userId,
+          fullName: u.fullName,
+        })),
+      );
     } catch (err) {
       console.error("Failed to fetch dropdown options:", err);
     } finally {
@@ -202,7 +217,18 @@ const UserAdministration = () => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setFormErrors((prev) => ({ ...prev, [field]: undefined }));
     setSubmitError(null);
+
+    // Asset drives which teams are selectable — reset team when asset changes
+    if (field === "asset_id") {
+      setForm((prev) => ({ ...prev, team_id: "" }));
+    }
   };
+
+  // Teams belonging to the currently selected asset
+  const filteredTeams = useMemo(
+    () => teams.filter((t) => String(t.assetId ?? "") === form.asset_id),
+    [teams, form.asset_id],
+  );
 
   const validate = (): boolean => {
     const errors: Partial<AddUserForm> = {};
@@ -213,8 +239,9 @@ const UserAdministration = () => {
     if (form.password !== form.confirmPassword)
                                       errors.confirmPassword = "Passwords do not match.";
     if (!form.role_id)                errors.role_id         = "Please select a role.";
-    // if (!form.team_id)                errors.team_id         = "Please select a team.";
+    if (!form.team_id)                errors.team_id         = "Please select a team.";
     if (!form.asset_id)               errors.asset_id        = "Please select an asset.";
+    // Manager is optional — no validation required
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -223,7 +250,6 @@ const UserAdministration = () => {
   const handleAddUser = async () => {
     if (!validate()) return;
 
-    const token = localStorage.getItem("token");
     setSubmitting(true);
     setSubmitError(null);
 
@@ -233,21 +259,17 @@ const UserAdministration = () => {
       enumber:         form.enumber.trim(),
       password:        form.password,
       confirmPassword: form.confirmPassword,
-      role_id:         Number(form.role_id),
-      team_id:         Number(form.team_id),
-      asset_id:        Number(form.asset_id),
+      roleId:          Number(form.role_id),
+      teamId:          form.team_id ? Number(form.team_id) : null,
+      assetId:         form.asset_id ? Number(form.asset_id) : null,
+      managerId:       form.manager_id ? Number(form.manager_id) : null,
     };
 
     try {
-      await axios.post(`${BASE_URL}/api/auth/signup`, payload, {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
+      await axiosInstance.post("/auth/signup", payload);
 
       // Refresh user list
-      const { data } = await axios.get(`${BASE_URL}/api/admin/allusers`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setUsers(data);
+      await fetchUsers();
       setModalOpen(false);
     } catch (err: any) {
       const msg =
@@ -681,7 +703,7 @@ const UserAdministration = () => {
                 </p>
               </div>
 
-              {/* Row 3: Role + Team */}
+              {/* Row 3: Role + Asset (asset chosen before team, since team depends on it) */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -709,52 +731,84 @@ const UserAdministration = () => {
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Asset <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={form.asset_id}
+                    onValueChange={(val) => setField("asset_id", val)}
+                  >
+                    <SelectTrigger className={formErrors.asset_id ? "border-destructive" : ""}>
+                      <SelectValue placeholder="Select asset" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {assets.map((a) => (
+                        <SelectItem key={a.assetId} value={String(a.assetId)}>
+                          {a.assetName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {formErrors.asset_id && (
+                    <p className="text-[11px] text-destructive">{formErrors.asset_id}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Row 4: Team (filtered by selected asset) + Manager */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Team <span className="text-destructive">*</span>
                   </Label>
                   <Select
                     value={form.team_id}
                     onValueChange={(val) => setField("team_id", val)}
+                    disabled={!form.asset_id}
                   >
                     <SelectTrigger className={formErrors.team_id ? "border-destructive" : ""}>
-                      <SelectValue placeholder="Select team" />
+                      <SelectValue
+                        placeholder={form.asset_id ? "Select team" : "Select asset first"}
+                      />
                     </SelectTrigger>
                     <SelectContent>
-                      {teams.map((t) => (
-                        <SelectItem key={t.teamId} value={String(t.teamId)}>
-                          {t.teamName}
-                        </SelectItem>
-                      ))}
+                      {filteredTeams.length === 0 ? (
+                        <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                          No teams under this asset yet.
+                        </div>
+                      ) : (
+                        filteredTeams.map((t) => (
+                          <SelectItem key={t.teamId} value={String(t.teamId)}>
+                            {t.teamName}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                   {formErrors.team_id && (
                     <p className="text-[11px] text-destructive">{formErrors.team_id}</p>
                   )}
                 </div>
-              </div>
 
-              {/* Asset */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Asset <span className="text-destructive">*</span>
-                </Label>
-                <Select
-                  value={form.asset_id}
-                  onValueChange={(val) => setField("asset_id", val)}
-                >
-                  <SelectTrigger className={formErrors.asset_id ? "border-destructive" : ""}>
-                    <SelectValue placeholder="Select asset" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {assets.map((a) => (
-                      <SelectItem key={a.assetId} value={String(a.assetId)}>
-                        {a.assetName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {formErrors.asset_id && (
-                  <p className="text-[11px] text-destructive">{formErrors.asset_id}</p>
-                )}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Manager
+                  </Label>
+                  <Select
+                    value={form.manager_id}
+                    onValueChange={(val) => setField("manager_id", val)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select manager (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {managers.map((m) => (
+                        <SelectItem key={m.userId} value={String(m.userId)}>
+                          {m.fullName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               {/* API error banner */}

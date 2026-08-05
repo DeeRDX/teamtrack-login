@@ -50,6 +50,7 @@ interface FormState {
   hoursLogged: string;
   dd:number;
   th:number;
+  devResponsibility: string;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -69,7 +70,8 @@ const emptyForm: FormState = {
   plannedHours: "0",
   hoursLogged: "0",
   dd:0,
-  th:0
+  th:0,
+  devResponsibility: "",
 
 };
 
@@ -201,7 +203,8 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
         plannedHours: String(editingTask.plannedHours ?? 0),
         hoursLogged: String(editingTask.hoursLogged ?? 0),
         dd : 0,
-        th : 0
+        th : 0,
+        devResponsibility: (editingTask as any).devResponsibility ?? "",
       });
     } else {
       setFormData(emptyForm);
@@ -230,7 +233,8 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
       plannedHours: Number(formData.plannedHours) || 0,
       hoursLogged: Number(formData.hoursLogged) || 0,
       dd : 0,
-      th : 0
+      th : 0,
+      devResponsibility: formData.devResponsibility || null,
     };
 
     setSaving(true);
@@ -322,7 +326,7 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-4 gap-4">
             <div className="space-y-1.5">
               <Label className={labelClass}>Classification</Label>
               <Select
@@ -337,6 +341,21 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
                   <SelectItem value="Bug">Bug</SelectItem>
                   <SelectItem value="Feature">Feature</SelectItem>
                   <SelectItem value="Support">Support</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className={labelClass}>Dev Responsibility</Label>
+              <Select
+                value={formData.devResponsibility}
+                onValueChange={(v) => handleChange("devResponsibility", v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="IN-TH">IN-TH</SelectItem>
+                  <SelectItem value="IN-DE">IN-DE</SelectItem>
                 </SelectContent>
               </Select>
             </div>
