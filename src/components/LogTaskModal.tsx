@@ -337,10 +337,18 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="CR">CR</SelectItem>
-                  <SelectItem value="Bug">Bug</SelectItem>
-                  <SelectItem value="Feature">Feature</SelectItem>
-                  <SelectItem value="Support">Support</SelectItem>
+<SelectItem value="Program">Program</SelectItem>
+<SelectItem value="Project">Project</SelectItem>
+<SelectItem value="CR">CR</SelectItem>
+<SelectItem value="Incident">Incident</SelectItem>
+<SelectItem value="Monitoring">Monitoring</SelectItem>
+<SelectItem value="Testing">Testing</SelectItem>
+<SelectItem value="PMO Activity">PMO Activity</SelectItem>
+<SelectItem value="Global">Global</SelectItem>
+<SelectItem value="PM Activity">PM Activity</SelectItem>
+<SelectItem value="Project Meeting">Project Meeting</SelectItem>
+<SelectItem value="Non Project Activity">Non Project Activity</SelectItem>
+<SelectItem value="Local">Local</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -355,7 +363,9 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="IN-TH">IN-TH</SelectItem>
-                  <SelectItem value="IN-DE">IN-DE</SelectItem>
+                  <SelectItem value="IN-DE">DE-TH</SelectItem>
+                  <SelectItem value="IN-DE">PL-TH</SelectItem>
+                  <SelectItem value="IN-DE">IN-TH,DE-TH</SelectItem>
                 </SelectContent>
               </Select>
             </div>

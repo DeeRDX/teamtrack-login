@@ -63,6 +63,7 @@ interface FunctionOption {
 interface UserOption {
   userId: number;
   fullName: string;
+  roleId: number;
 }
 
 interface AssetForm {
@@ -132,6 +133,7 @@ const AssetAdministration = () => {
         (Array.isArray(usersRes.data) ? usersRes.data : []).map((u: any) => ({
           userId: u.userId,
           fullName: u.fullName,
+          roleId: u.roleId,
         })),
       );
     } catch (err) {
@@ -244,31 +246,42 @@ const AssetAdministration = () => {
   const UserSelect = ({
     label,
     field,
+    roleId,
   }: {
     label: string;
     field: keyof AssetForm;
-  }) => (
-    <div className="space-y-1.5">
-      <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {label}
-      </Label>
-      <Select
-        value={form[field] as string}
-        onValueChange={(val) => setField(field, val)}
-      >
-        <SelectTrigger>
-          <SelectValue placeholder="Select" />
-        </SelectTrigger>
-        <SelectContent>
-          {users.map((u) => (
-            <SelectItem key={u.userId} value={String(u.userId)}>
-              {u.fullName}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  );
+    roleId?: number;
+  }) => {
+    const options = roleId ? users.filter((u) => u.roleId === roleId) : users;
+    return (
+      <div className="space-y-1.5">
+        <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {label}
+        </Label>
+        <Select
+          value={form[field] as string}
+          onValueChange={(val) => setField(field, val)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select" />
+          </SelectTrigger>
+          <SelectContent>
+            {options.length === 0 ? (
+              <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                No users with this role.
+              </div>
+            ) : (
+              options.map((u) => (
+                <SelectItem key={u.userId} value={String(u.userId)}>
+                  {u.fullName}
+                </SelectItem>
+              ))
+            )}
+          </SelectContent>
+        </Select>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -505,8 +518,8 @@ const AssetAdministration = () => {
               </div>
 
               <div className="grid grid-cols-3 gap-3">
-                <UserSelect label="Account Mgr" field="amUserId" />
-                <UserSelect label="Delivery Mgr" field="dmUserId" />
+                <UserSelect label="Account Mgr" field="amUserId" roleId={1} />
+                <UserSelect label="Delivery Mgr" field="dmUserId" roleId={2} />
                 <UserSelect label="Delivery Head" field="dhUserId" />
               </div>
 

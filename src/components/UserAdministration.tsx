@@ -31,7 +31,7 @@ import { Label } from "@/components/ui/label";
 import {
   Search,
   Users,
-  Building2,
+  Boxes,
   ShieldCheck,
   Plus,
   Pencil,
@@ -49,13 +49,17 @@ interface AdminUser {
   enumber: string;
   fullName: string;
   email: string;
+  isActive: boolean;
+  roleId: number;
   roleName: string;
   hierarchyLevel: number;
+  teamId: number | null;
   teamName: string;
   dailyHours: number;
+  assetId: number | null;
   assetName: string;
+  managerId: number | null;
   managerName: string | null;
-  isActive: boolean;
   tasksThisMonth: number;
   hoursThisMonth: number;
 }
@@ -117,6 +121,28 @@ const EMPTY_FORM: AddUserForm = {
   manager_id: "",
 };
 
+interface EditUserForm {
+  enumber: string;
+  fullName: string;
+  email: string;
+  role_id: string;
+  team_id: string;
+  asset_id: string;
+  manager_id: string;
+  is_active: boolean;
+}
+
+const EMPTY_EDIT_FORM: EditUserForm = {
+  enumber: "",
+  fullName: "",
+  email: "",
+  role_id: "",
+  team_id: "",
+  asset_id: "",
+  manager_id: "",
+  is_active: true,
+};
+
 // ── Hierarchy level styling ───────────────────────────────────────────────────
 
 const levelStyleMap: Record<number, { label: string; className: string }> = {
@@ -141,13 +167,22 @@ const UserAdministration = () => {
   const [loading, setLoading]   = useState(false);
   const [query, setQuery]       = useState("");
   const [page, setPage]         = useState(1);
+  const [assetFilter, setAssetFilter] = useState<string>("all");
 
-  // Modal state
+  // Add modal state
   const [modalOpen, setModalOpen]         = useState(false);
   const [form, setForm]                   = useState<AddUserForm>(EMPTY_FORM);
   const [formErrors, setFormErrors]       = useState<Partial<AddUserForm>>({});
   const [submitting, setSubmitting]       = useState(false);
   const [submitError, setSubmitError]     = useState<string | null>(null);
+
+  // Edit modal state
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingUser, setEditingUser]     = useState<AdminUser | null>(null);
+  const [editForm, setEditForm]           = useState<EditUserForm>(EMPTY_EDIT_FORM);
+  const [editErrors, setEditErrors]       = useState<Partial<Record<keyof EditUserForm, string>>>({});
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError]         = useState<string | null>(null);
 
   // Dropdown options
   const [roles, setRoles]       = useState<RoleOption[]>([]);
@@ -173,22 +208,17 @@ const UserAdministration = () => {
     fetchUsers();
   }, []);
 
-  // ── Fetch dropdown options when modal opens ────────────────────────────────
-  const openAddUserModal = async () => {
-    setForm(EMPTY_FORM);
-    setFormErrors({});
-    setSubmitError(null);
-    setModalOpen(true);
-
-    if (roles.length && teams.length && assets.length && managers.length) return; // already fetched
+  // ── Fetch dropdown options (shared by Add + Edit) ─────────────────────────
+  const ensureDropdownsLoaded = async () => {
+    if (roles.length && teams.length && assets.length && managers.length) return;
 
     setDropdownLoading(true);
     try {
       const [rolesRes, teamsRes, assetsRes, usersRes] = await Promise.all([
         axiosInstance.get<RoleOption[]>("/admin/roles"),
-        axiosInstance.get<TeamOption[]>("/admin/teams"),
+        axiosInstance.get<any[]>("/admin/teams"),
         axiosInstance.get<AssetOption[]>("/admin/assets"),
-        axiosInstance.get<any[]>("/admin/allusers"), // reused as manager candidates
+        axiosInstance.get<any[]>("/admin/allusers"),
       ]);
       setRoles(rolesRes.data);
       setTeams(
@@ -212,19 +242,43 @@ const UserAdministration = () => {
     }
   };
 
-  // ── Form field helpers ─────────────────────────────────────────────────────
+  const openAddUserModal = async () => {
+    setForm(EMPTY_FORM);
+    setFormErrors({});
+    setSubmitError(null);
+    setModalOpen(true);
+    await ensureDropdownsLoaded();
+  };
+
+  const openEditUserModal = async (user: AdminUser) => {
+    setEditingUser(user);
+    setEditForm({
+      enumber: user.enumber,
+      fullName: user.fullName,
+      email: user.email,
+      role_id: String(user.roleId),
+      team_id: user.teamId ? String(user.teamId) : "",
+      asset_id: user.assetId ? String(user.assetId) : "",
+      manager_id: user.managerId ? String(user.managerId) : "",
+      is_active: user.isActive,
+    });
+    setEditErrors({});
+    setEditError(null);
+    setEditModalOpen(true);
+    await ensureDropdownsLoaded();
+  };
+
+  // ── Form field helpers (Add) ──────────────────────────────────────────────
   const setField = (field: keyof AddUserForm, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setFormErrors((prev) => ({ ...prev, [field]: undefined }));
     setSubmitError(null);
-
-    // Asset drives which teams are selectable — reset team when asset changes
     if (field === "asset_id") {
       setForm((prev) => ({ ...prev, team_id: "" }));
     }
   };
 
-  // Teams belonging to the currently selected asset
+  // Teams under the currently selected asset (Add modal)
   const filteredTeams = useMemo(
     () => teams.filter((t) => String(t.assetId ?? "") === form.asset_id),
     [teams, form.asset_id],
@@ -239,9 +293,8 @@ const UserAdministration = () => {
     if (form.password !== form.confirmPassword)
                                       errors.confirmPassword = "Passwords do not match.";
     if (!form.role_id)                errors.role_id         = "Please select a role.";
-    if (!form.team_id)                errors.team_id         = "Please select a team.";
     if (!form.asset_id)               errors.asset_id        = "Please select an asset.";
-    // Manager is optional — no validation required
+    if (!form.team_id)                errors.team_id         = "Please select a team.";
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -267,8 +320,6 @@ const UserAdministration = () => {
 
     try {
       await axiosInstance.post("/auth/signup", payload);
-
-      // Refresh user list
       await fetchUsers();
       setModalOpen(false);
     } catch (err: any) {
@@ -279,6 +330,64 @@ const UserAdministration = () => {
       setSubmitError(typeof msg === "string" ? msg : JSON.stringify(msg));
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // ── Form field helpers (Edit) ─────────────────────────────────────────────
+  const setEditField = <K extends keyof EditUserForm>(field: K, value: EditUserForm[K]) => {
+    setEditForm((prev) => ({ ...prev, [field]: value }));
+    setEditErrors((prev) => ({ ...prev, [field]: undefined }));
+    setEditError(null);
+    if (field === "asset_id") {
+      setEditForm((prev) => ({ ...prev, team_id: "" }));
+    }
+  };
+
+  // Teams under the currently selected asset (Edit modal)
+  const filteredTeamsForEdit = useMemo(
+    () => teams.filter((t) => String(t.assetId ?? "") === editForm.asset_id),
+    [teams, editForm.asset_id],
+  );
+
+  const validateEdit = (): boolean => {
+    const errors: Partial<Record<keyof EditUserForm, string>> = {};
+    if (!editForm.enumber.trim())  errors.enumber  = "Employee number is required.";
+    if (!editForm.fullName.trim()) errors.fullName = "Full name is required.";
+    if (!editForm.email.trim())    errors.email    = "Email is required.";
+    if (!editForm.role_id)         errors.role_id  = "Please select a role.";
+    setEditErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleUpdateUser = async () => {
+    if (!editingUser || !validateEdit()) return;
+
+    setEditSubmitting(true);
+    setEditError(null);
+
+    const payload = {
+      enumber:   editForm.enumber.trim(),
+      fullName:  editForm.fullName.trim(),
+      email:     editForm.email.trim(),
+      roleId:    Number(editForm.role_id),
+      teamId:    editForm.team_id ? Number(editForm.team_id) : null,
+      assetId:   editForm.asset_id ? Number(editForm.asset_id) : null,
+      managerId: editForm.manager_id ? Number(editForm.manager_id) : null,
+      isActive:  editForm.is_active,
+    };
+
+    try {
+      await axiosInstance.put(`/admin/users/${editingUser.userId}`, payload);
+      await fetchUsers();
+      setEditModalOpen(false);
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.title ||
+        "Failed to update user. Please try again.";
+      setEditError(typeof msg === "string" ? msg : JSON.stringify(msg));
+    } finally {
+      setEditSubmitting(false);
     }
   };
 
@@ -296,16 +405,28 @@ const UserAdministration = () => {
   const activeCount = users.filter((u) => u.isActive).length;
   const activePct   = totalUsers > 0 ? Math.round((activeCount / totalUsers) * 100) : 0;
 
-  // ── Search + pagination ────────────────────────────────────────────────────
+  // Asset options derived from the loaded users, for the filter card
+  const assetOptionsForFilter = useMemo(() => {
+    const map = new Map<number, string>();
+    users.forEach((u) => {
+      if (u.assetId && u.assetName) map.set(u.assetId, u.assetName);
+    });
+    return Array.from(map.entries());
+  }, [users]);
+
+  // ── Search + asset filter + pagination ────────────────────────────────────
   const filtered = useMemo(
     () =>
-      users.filter((u) =>
-        [u.fullName, u.email, u.enumber, u.roleName, u.teamName]
+      users.filter((u) => {
+        const matchesQuery = [u.fullName, u.email, u.enumber, u.roleName, u.teamName]
           .join(" ")
           .toLowerCase()
-          .includes(query.toLowerCase()),
-      ),
-    [users, query],
+          .includes(query.toLowerCase());
+        const matchesAsset =
+          assetFilter === "all" || String(u.assetId ?? "") === assetFilter;
+        return matchesQuery && matchesAsset;
+      }),
+    [users, query, assetFilter],
   );
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -364,13 +485,31 @@ const UserAdministration = () => {
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-              <Building2 className="h-5 w-5 text-muted-foreground" />
+              <Boxes className="h-5 w-5 text-muted-foreground" />
             </div>
-            <div>
+            <div className="flex-1">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Department
+                Filter by Asset
               </p>
-              <p className="text-sm font-semibold text-foreground">All Departments</p>
+              <Select
+                value={assetFilter}
+                onValueChange={(val) => {
+                  setAssetFilter(val);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger className="h-7 border-0 px-0 text-sm shadow-none focus:ring-0">
+                  <SelectValue placeholder="All Assets" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Assets</SelectItem>
+                  {assetOptionsForFilter.map(([id, name]) => (
+                    <SelectItem key={id} value={String(id)}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>
@@ -502,12 +641,17 @@ const UserAdministration = () => {
 
                       <TableCell>
                         <div className="flex gap-2">
-                          <button className="rounded-md border border-border p-1.5 text-primary hover:bg-primary/10">
+                          <button
+                            onClick={() => openEditUserModal(u)}
+                            className="rounded-md border border-border p-1.5 text-primary hover:bg-primary/10"
+                            title="Edit user"
+                          >
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
                           <button
                             onClick={() => removeUser(u.userId)}
                             className="rounded-md border border-border p-1.5 text-destructive hover:bg-destructive/10"
+                            title="Remove user"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
@@ -606,7 +750,6 @@ const UserAdministration = () => {
             </div>
           ) : (
             <div className="grid gap-4 py-2">
-              {/* Row 1: Full Name + Employee Number */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="fullName" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -614,7 +757,7 @@ const UserAdministration = () => {
                   </Label>
                   <Input
                     id="fullName"
-                    placeholder="e.g. Ankush Singh"
+                    placeholder="e.g. Deepak Goud"
                     value={form.fullName}
                     onChange={(e) => setField("fullName", e.target.value)}
                     className={formErrors.fullName ? "border-destructive" : ""}
@@ -641,7 +784,6 @@ const UserAdministration = () => {
                 </div>
               </div>
 
-              {/* Email */}
               <div className="space-y-1.5">
                 <Label htmlFor="email" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Email Address <span className="text-destructive">*</span>
@@ -659,7 +801,6 @@ const UserAdministration = () => {
                 )}
               </div>
 
-              {/* Row 2: Password + Confirm Password */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="password" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -696,23 +837,19 @@ const UserAdministration = () => {
                 </div>
               </div>
 
-              {/* Divider */}
               <div className="border-t border-border pt-1">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Organisation Details
                 </p>
               </div>
 
-              {/* Row 3: Role + Asset (asset chosen before team, since team depends on it) */}
+              {/* Role + Asset (asset drives team) */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Role <span className="text-destructive">*</span>
                   </Label>
-                  <Select
-                    value={form.role_id}
-                    onValueChange={(val) => setField("role_id", val)}
-                  >
+                  <Select value={form.role_id} onValueChange={(val) => setField("role_id", val)}>
                     <SelectTrigger className={formErrors.role_id ? "border-destructive" : ""}>
                       <SelectValue placeholder="Select role" />
                     </SelectTrigger>
@@ -733,10 +870,7 @@ const UserAdministration = () => {
                   <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Asset <span className="text-destructive">*</span>
                   </Label>
-                  <Select
-                    value={form.asset_id}
-                    onValueChange={(val) => setField("asset_id", val)}
-                  >
+                  <Select value={form.asset_id} onValueChange={(val) => setField("asset_id", val)}>
                     <SelectTrigger className={formErrors.asset_id ? "border-destructive" : ""}>
                       <SelectValue placeholder="Select asset" />
                     </SelectTrigger>
@@ -754,7 +888,7 @@ const UserAdministration = () => {
                 </div>
               </div>
 
-              {/* Row 4: Team (filtered by selected asset) + Manager */}
+              {/* Team (filtered by asset) + Manager */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -766,9 +900,7 @@ const UserAdministration = () => {
                     disabled={!form.asset_id}
                   >
                     <SelectTrigger className={formErrors.team_id ? "border-destructive" : ""}>
-                      <SelectValue
-                        placeholder={form.asset_id ? "Select team" : "Select asset first"}
-                      />
+                      <SelectValue placeholder={form.asset_id ? "Select team" : "Select asset first"} />
                     </SelectTrigger>
                     <SelectContent>
                       {filteredTeams.length === 0 ? (
@@ -793,10 +925,7 @@ const UserAdministration = () => {
                   <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Manager
                   </Label>
-                  <Select
-                    value={form.manager_id}
-                    onValueChange={(val) => setField("manager_id", val)}
-                  >
+                  <Select value={form.manager_id} onValueChange={(val) => setField("manager_id", val)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select manager (optional)" />
                     </SelectTrigger>
@@ -811,7 +940,6 @@ const UserAdministration = () => {
                 </div>
               </div>
 
-              {/* API error banner */}
               {submitError && (
                 <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
                   {submitError}
@@ -821,20 +949,10 @@ const UserAdministration = () => {
           )}
 
           <DialogFooter className="gap-2 pt-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setModalOpen(false)}
-              disabled={submitting}
-            >
+            <Button variant="outline" size="sm" onClick={() => setModalOpen(false)} disabled={submitting}>
               Cancel
             </Button>
-            <Button
-              size="sm"
-              onClick={handleAddUser}
-              disabled={submitting || dropdownLoading}
-              className="gap-1.5"
-            >
+            <Button size="sm" onClick={handleAddUser} disabled={submitting || dropdownLoading} className="gap-1.5">
               {submitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -844,6 +962,219 @@ const UserAdministration = () => {
                 <>
                   <Plus className="h-4 w-4" />
                   Create User
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Edit User Modal ─────────────────────────────────────────────────── */}
+      <Dialog open={editModalOpen} onOpenChange={(open) => !editSubmitting && setEditModalOpen(open)}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-4 w-4" />
+              Edit User {editingUser ? `— ${editingUser.fullName}` : ""}
+            </DialogTitle>
+          </DialogHeader>
+
+          {dropdownLoading ? (
+            <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading form options...
+            </div>
+          ) : (
+            <div className="grid gap-4 py-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Full Name <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    value={editForm.fullName}
+                    onChange={(e) => setEditField("fullName", e.target.value)}
+                    className={editErrors.fullName ? "border-destructive" : ""}
+                  />
+                  {editErrors.fullName && (
+                    <p className="text-[11px] text-destructive">{editErrors.fullName}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Employee # <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    value={editForm.enumber}
+                    onChange={(e) => setEditField("enumber", e.target.value)}
+                    className={`font-mono ${editErrors.enumber ? "border-destructive" : ""}`}
+                  />
+                  {editErrors.enumber && (
+                    <p className="text-[11px] text-destructive">{editErrors.enumber}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Email Address <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditField("email", e.target.value)}
+                  className={editErrors.email ? "border-destructive" : ""}
+                />
+                {editErrors.email && (
+                  <p className="text-[11px] text-destructive">{editErrors.email}</p>
+                )}
+              </div>
+
+              <div className="border-t border-border pt-1">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Organisation Details
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Role <span className="text-destructive">*</span>
+                  </Label>
+                  <Select value={editForm.role_id} onValueChange={(val) => setEditField("role_id", val)}>
+                    <SelectTrigger className={editErrors.role_id ? "border-destructive" : ""}>
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {roles.map((r) => (
+                        <SelectItem key={r.roleId} value={String(r.roleId)}>
+                          {r.roleName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {editErrors.role_id && (
+                    <p className="text-[11px] text-destructive">{editErrors.role_id}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Asset
+                  </Label>
+                  <Select value={editForm.asset_id} onValueChange={(val) => setEditField("asset_id", val)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select asset" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {assets.map((a) => (
+                        <SelectItem key={a.assetId} value={String(a.assetId)}>
+                          {a.assetName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Team
+                  </Label>
+                  <Select
+                    value={editForm.team_id}
+                    onValueChange={(val) => setEditField("team_id", val)}
+                    disabled={!editForm.asset_id}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={editForm.asset_id ? "Select team" : "Select asset first"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredTeamsForEdit.length === 0 ? (
+                        <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                          No teams under this asset yet.
+                        </div>
+                      ) : (
+                        filteredTeamsForEdit.map((t) => (
+                          <SelectItem key={t.teamId} value={String(t.teamId)}>
+                            {t.teamName}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Manager
+                  </Label>
+                  <Select value={editForm.manager_id} onValueChange={(val) => setEditField("manager_id", val)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select manager" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {managers
+                        .filter((m) => m.userId !== editingUser?.userId)
+                        .map((m) => (
+                          <SelectItem key={m.userId} value={String(m.userId)}>
+                            {m.fullName}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between rounded-md border border-border px-3 py-2.5">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Active Status
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Inactive users cannot log in.
+                  </p>
+                </div>
+                <Switch
+                  checked={editForm.is_active}
+                  onCheckedChange={(checked) => setEditField("is_active", checked)}
+                />
+              </div>
+
+              {editError && (
+                <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                  {editError}
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setEditModalOpen(false)}
+              disabled={editSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleUpdateUser}
+              disabled={editSubmitting || dropdownLoading}
+              className="gap-1.5"
+            >
+              {editSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Pencil className="h-4 w-4" />
+                  Save Changes
                 </>
               )}
             </Button>
