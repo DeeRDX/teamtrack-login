@@ -33,3 +33,4 @@ export const signup = async (payload: SignupPayload) => {
   const response = await axiosInstance.post("/auth/signup", payload);
   return response.data;
 };
+  

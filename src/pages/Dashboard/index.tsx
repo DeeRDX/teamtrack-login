@@ -19,6 +19,12 @@ import AssetAdministration from "@/components/AssetAdministration";
 import TeamAdministration from "@/components/TeamAdministration";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Users,
   LogOut,
   LayoutDashboard,
@@ -37,6 +43,7 @@ import {
   CalendarCheck,
   Loader2,
   Download,
+  Upload,
   Boxes,
 } from "lucide-react";
 
@@ -53,15 +60,33 @@ const navItems = [
   { icon: UsersRound, label: "Team Admin", key: "teamadmin" },
 ];
 
+interface WeekDayBreakdown {
+  date: string;
+  dayName: string;
+  hoursLogged: number;
+  hoursExpected: number;
+  isLeaveDay: boolean;
+  leaveType: string | null;
+}
+
 interface UserStats {
-  hoursLoggedToday: number;
-  hoursLoggedThisWeek: number;
-  hoursExpectedThisWeek: number;
-  totalTasksThisMonth: number;
-  totalTasksToday: number;
+  managerName: string | null;
   assetName: string;
   assetFunction: string;
   dailyHours: number;
+
+  hoursLoggedToday: number;
+
+  hoursLoggedThisWeek: number;
+  hoursExpectedThisWeek: number;
+  hoursLoggedThisMonth: number;
+  hoursExpectedThisMonth: number;
+
+  totalTasksThisMonth: number;
+  totalTasksToday: number;
+
+  totalLeavesThisMonth: number;
+  weekBreakdown: WeekDayBreakdown[];
 }
 
 const DashboardPage = () => {
@@ -79,6 +104,16 @@ const DashboardPage = () => {
   const [exportType, setExportType] = useState<"week" | "month">("week");
   const [exporting, setExporting] = useState(false);
 
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{
+    totalRows: number;
+    successCount: number;
+    failureCount: number;
+    rows: { rowNumber: number; success: boolean; taskDescription: string; message: string }[];
+  } | null>(null);
+
   useEffect(() => {
     const fetchStats = async () => {
       if (!userId) return;
@@ -92,14 +127,23 @@ const DashboardPage = () => {
         });
 
         setStats({
-          hoursLoggedToday: data?.hoursSummary?.hoursLoggedToday ?? 0,
-          hoursLoggedThisWeek: data?.hoursSummary?.hoursLoggedThisWeek ?? 0,
-          hoursExpectedThisWeek: data?.hoursSummary?.hoursExpectedThisWeek ?? 0,
-          totalTasksThisMonth: data?.taskSummary?.totalTasksThisMonth ?? 0,
-          totalTasksToday: data?.taskSummary?.totalTasksToday ?? 0,
+          managerName: data?.managerName ?? null,
           assetName: data?.assetName ?? "—",
           assetFunction: data?.assetFunction ?? "—",
           dailyHours: data?.dailyHours ?? 0,
+
+          hoursLoggedToday: data?.hoursSummary?.hoursLoggedToday ?? 0,
+
+          hoursLoggedThisWeek: data?.hoursSummary?.hoursLoggedThisWeek ?? 0,
+          hoursExpectedThisWeek: data?.hoursSummary?.hoursExpectedThisWeek ?? 0,
+          hoursLoggedThisMonth: data?.hoursSummary?.hoursLoggedThisMonth ?? 0,
+          hoursExpectedThisMonth: data?.hoursSummary?.hoursExpectedThisMonth ?? 0,
+
+          totalTasksThisMonth: data?.taskSummary?.totalTasksThisMonth ?? 0,
+          totalTasksToday: data?.taskSummary?.totalTasksToday ?? 0,
+
+          totalLeavesThisMonth: data?.leaveSummary?.totalLeavesThisMonth ?? 0,
+          weekBreakdown: data?.hoursSummary?.weekBreakdown ?? [],
         });
       } catch (err) {
         console.error("Failed to fetch user stats:", err);
@@ -148,9 +192,73 @@ const DashboardPage = () => {
     }
   };
 
-  const remainingWeekly = stats
-    ? Math.max(0, stats.hoursExpectedThisWeek - stats.hoursLoggedThisWeek)
+  const openImportModal = () => {
+    setImportFile(null);
+    setImportResult(null);
+    setImportModalOpen(true);
+  };
+
+  const handleFilePicked = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file later
+    if (!file) return;
+    setImportFile(file);
+    setImportResult(null);
+  };
+
+  const handleConfirmImport = async () => {
+    if (!importFile) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", importFile);
+
+      const { data } = await axiosInstance.post("/tasks/import", formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      setImportResult(data);
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message || "Import failed. Please check the file and try again.";
+      setImportResult({
+        totalRows: 0,
+        successCount: 0,
+        failureCount: 1,
+        rows: [{ rowNumber: 0, success: false, taskDescription: "", message: msg }],
+      });
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const isWeek = exportType === "week";
+
+  const currentLogged = stats
+    ? isWeek
+      ? stats.hoursLoggedThisWeek
+      : stats.hoursLoggedThisMonth
     : 0;
+  const currentExpected = stats
+    ? isWeek
+      ? stats.hoursExpectedThisWeek
+      : stats.hoursExpectedThisMonth
+    : 0;
+  const remainingCurrent = Math.max(0, currentExpected - currentLogged);
+
+  // Week: count leave days from the week breakdown (Half day = 0.5)
+  const leavesThisWeek = (stats?.weekBreakdown ?? []).reduce(
+    (sum, d) => sum + (d.isLeaveDay ? (d.leaveType === "Half" ? 0.5 : 1) : 0),
+    0,
+  );
+  const currentLeaves = isWeek ? leavesThisWeek : stats?.totalLeavesThisMonth ?? 0;
 
   const StatCard = ({
     icon: Icon,
@@ -239,6 +347,21 @@ const DashboardPage = () => {
               <LogOut className="h-4 w-4" />
             </button>
           </div>
+
+          {(stats?.managerName || stats?.assetName) && (
+            <div className="mt-3 space-y-1 border-t border-border pt-3">
+              {stats?.managerName && (
+                <p className="truncate text-[11px] text-muted-foreground">
+                  <span className="font-medium text-foreground">Manager:</span> {stats.managerName}
+                </p>
+              )}
+              {stats?.assetName && stats.assetName !== "—" && (
+                <p className="truncate text-[11px] text-muted-foreground">
+                  <span className="font-medium text-foreground">Asset:</span> {stats.assetName}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </aside>
 
@@ -287,6 +410,17 @@ const DashboardPage = () => {
                   )}
                   {exporting ? "Exporting..." : "Export"}
                 </Button>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  title="Import tasks from an Excel file (same format as Export)"
+                  onClick={openImportModal}
+                >
+                  <Upload className="h-4 w-4" />
+                  Import
+                </Button>
               </>
             )}
 
@@ -318,7 +452,7 @@ const DashboardPage = () => {
           ) : (
             <>
               {/* Stats Cards */}
-              <div className="mb-6 grid grid-cols-4 gap-4">
+              <div className="mb-6 grid grid-cols-5 gap-4">
                 <StatCard
                   icon={Clock}
                   iconBg="bg-primary/10"
@@ -337,9 +471,9 @@ const DashboardPage = () => {
                   icon={CalendarDays}
                   iconBg="bg-muted"
                   iconColor="text-muted-foreground"
-                  label="Weekly Logged"
-                  value={`${stats?.hoursLoggedThisWeek ?? 0} hours`}
-                  badge={`Target ${stats?.hoursExpectedThisWeek ?? 0}h`}
+                  label={isWeek ? "Weekly Logged" : "Monthly Logged"}
+                  value={`${currentLogged} hours`}
+                  badge={`Target ${currentExpected}h`}
                   badgeClass="border border-border text-muted-foreground text-[10px] font-bold uppercase tracking-wide"
                 />
 
@@ -347,9 +481,9 @@ const DashboardPage = () => {
                   icon={FileText}
                   iconBg="bg-orange-50"
                   iconColor="text-orange-500"
-                  label="Remaining Weekly"
-                  value={`${remainingWeekly} hours`}
-                  badge={`Target ${stats?.hoursExpectedThisWeek ?? 0}h`}
+                  label={isWeek ? "Remaining Weekly" : "Remaining Monthly"}
+                  value={`${remainingCurrent} hours`}
+                  badge={`Target ${currentExpected}h`}
                   badgeClass="border border-border text-muted-foreground text-[10px] font-bold uppercase tracking-wide"
                 />
 
@@ -367,6 +501,23 @@ const DashboardPage = () => {
                   badge={`+${stats?.totalTasksToday ?? 0} Today`}
                   badgeClass="bg-green-50 text-green-600"
                 />
+
+                <StatCard
+                  icon={CalendarCheck}
+                  iconBg="bg-purple-50"
+                  iconColor="text-purple-500"
+                  label={isWeek ? "Leaves This Week" : "Leaves This Month"}
+                  value={
+                    <>
+                      {currentLeaves}{" "}
+                      <span className="text-base font-normal text-muted-foreground">
+                        {currentLeaves === 1 ? "day" : "days"}
+                      </span>
+                    </>
+                  }
+                  badge={isWeek ? "This Week" : "This Month"}
+                  badgeClass="bg-purple-50 text-purple-600"
+                />
               </div>
 
               <div className="mb-6">
@@ -378,6 +529,129 @@ const DashboardPage = () => {
       </div>
 
       <LogTaskModal open={logTaskOpen} onOpenChange={setLogTaskOpen} />
+
+      {/* ── Import Modal ─────────────────────────────────────────────────── */}
+      <Dialog
+        open={importModalOpen}
+        onOpenChange={(open) => {
+          if (!importing) setImportModalOpen(open);
+        }}
+      >
+        <DialogContent className="sm:max-w-[560px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="h-4 w-4" />
+              Import Tasks from Excel
+            </DialogTitle>
+          </DialogHeader>
+
+          {!importResult ? (
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-muted-foreground">
+                Select the same Excel file format produced by <strong>Export</strong>. Each row
+                becomes a task, using <strong>Actual Start Date</strong> as the log date.
+              </p>
+
+              <input
+                type="file"
+                id="import-file-input"
+                accept=".xlsx"
+                className="hidden"
+                onChange={handleFilePicked}
+              />
+
+              <div
+                onClick={() => document.getElementById("import-file-input")?.click()}
+                className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border p-8 text-center hover:bg-muted/40"
+              >
+                <Upload className="h-6 w-6 text-muted-foreground" />
+                {importFile ? (
+                  <p className="text-sm font-medium text-foreground">{importFile.name}</p>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium text-foreground">Click to choose a file</p>
+                    <p className="text-xs text-muted-foreground">.xlsx only</p>
+                  </>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setImportModalOpen(false)}
+                  disabled={importing}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={handleConfirmImport}
+                  disabled={!importFile || importing}
+                >
+                  {importing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Importing...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4" />
+                      Import
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex gap-4 text-sm">
+                <span className="text-muted-foreground">
+                  Total rows: <span className="font-semibold text-foreground">{importResult.totalRows}</span>
+                </span>
+                <span className="text-green-600">
+                  Imported: <span className="font-semibold">{importResult.successCount}</span>
+                </span>
+                <span className="text-destructive">
+                  Failed: <span className="font-semibold">{importResult.failureCount}</span>
+                </span>
+              </div>
+              <div className="max-h-72 overflow-y-auto rounded-md border border-border">
+                {importResult.rows.map((r, i) => (
+                  <div
+                    key={i}
+                    className={`border-b border-border px-3 py-2 text-xs last:border-b-0 ${
+                      r.success ? "bg-green-50" : "bg-destructive/5"
+                    }`}
+                  >
+                    <p className="font-medium text-foreground">
+                      Row {r.rowNumber || "—"}
+                      {r.taskDescription ? ` — ${r.taskDescription}` : ""}
+                    </p>
+                    <p className={r.success ? "text-green-700" : "text-destructive"}>{r.message}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setImportFile(null);
+                    setImportResult(null);
+                  }}
+                >
+                  Import Another File
+                </Button>
+                <Button size="sm" onClick={() => setImportModalOpen(false)}>
+                  Done
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

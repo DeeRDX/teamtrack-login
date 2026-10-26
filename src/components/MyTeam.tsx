@@ -43,6 +43,8 @@ interface TeamMember {
   hoursSummary?: {
     hoursLoggedThisWeek: number;
     hoursExpectedThisWeek: number;
+    hoursLoggedThisMonth: number;
+    hoursExpectedThisMonth: number;
   };
 }
 
@@ -60,9 +62,21 @@ const categoryStyles: Record<string, string> = {
   BAU: "bg-amber-50 text-amber-600 border-amber-200",
 };
 
-const utilization = (m: TeamMember) => {
-  const logged = m.hoursSummary?.hoursLoggedThisWeek ?? 0;
-  const expected = m.hoursSummary?.hoursExpectedThisWeek ?? 0;
+// hoursExpected already factors in leave days (Full/Half) — computed server-side,
+// so no extra leave math is needed here. Just pick the right range's fields.
+const loggedHoursFor = (m: TeamMember, range: "week" | "month") =>
+  range === "week"
+    ? m.hoursSummary?.hoursLoggedThisWeek ?? 0
+    : m.hoursSummary?.hoursLoggedThisMonth ?? 0;
+
+const expectedHoursFor = (m: TeamMember, range: "week" | "month") =>
+  range === "week"
+    ? m.hoursSummary?.hoursExpectedThisWeek ?? 0
+    : m.hoursSummary?.hoursExpectedThisMonth ?? 0;
+
+const utilization = (m: TeamMember, range: "week" | "month") => {
+  const logged = loggedHoursFor(m, range);
+  const expected = expectedHoursFor(m, range);
   if (!expected) return 0;
   return Math.round((logged / expected) * 100);
 };
@@ -226,7 +240,9 @@ const MyTeam = () => {
               </p>
             ) : (
               members.map((m) => {
-                const util = utilization(m);
+                const util = utilization(m, range);
+                const loggedH = loggedHoursFor(m, range);
+                const expectedH = expectedHoursFor(m, range);
                 return (
                   <div key={m.userId} className="flex items-center gap-4">
                     <Avatar className="h-9 w-9">
@@ -247,6 +263,9 @@ const MyTeam = () => {
                           style={{ width: `${Math.min(util, 100)}%` }}
                         />
                       </div>
+                      <p className="mt-1 text-[10px] text-muted-foreground">
+                        {loggedH.toFixed(1)}h logged / {expectedH.toFixed(1)}h expected
+                      </p>
                     </div>
                     <div className="w-12 text-right text-sm font-semibold text-foreground">
                       {util}%
