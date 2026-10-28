@@ -122,9 +122,12 @@ const DashboardPage = () => {
 
       setStatsLoading(true);
       try {
-        const { data } = await axiosInstance.get(`/users/${userId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const { data } = await axiosInstance.get(
+  `/users/${userId}?range=${exportType}`,
+  {
+    headers: { Authorization: `Bearer ${token}` },
+  }
+);
 
         setStats({
           managerName: data?.managerName ?? null,
@@ -153,7 +156,8 @@ const DashboardPage = () => {
     };
 
     fetchStats();
-  }, [userId]);
+}, [userId, exportType]);
+
 
   const handleExport = async () => {
     const token = localStorage.getItem("token");
@@ -521,7 +525,7 @@ const DashboardPage = () => {
               </div>
 
               <div className="mb-6">
-                <TaskEntriesTable />
+           <TaskEntriesTable range={exportType} />
               </div>
             </>
           )}

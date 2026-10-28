@@ -21,6 +21,7 @@ export interface Task {
 interface TasksContextType {
   tasks: Task[];
   loading: boolean;
+  setTaskRange: (range: "week" | "month") => void;
   addTask: (task: Omit<Task, "id">) => void;
   updateTask: (id: string, task: Omit<Task, "id">) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
@@ -62,6 +63,7 @@ export const TasksProvider: React.FC<{
 }> = ({ children, userId }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
+  const [taskRange, setTaskRange] = useState<"week" | "month">("week");
 
   const fetchTasks = useCallback(async () => {
     if (!userId) return;
@@ -72,9 +74,13 @@ export const TasksProvider: React.FC<{
     }
     setLoading(true);
     try {
-      const { data } = await axios.get(`${BASE_URL}/api/users/${userId}`, {
-        headers: getAuthHeaders(),
-      });
+     const { data } = await axios.get(
+  `${BASE_URL}/api/users/${userId}?range=${taskRange}`,
+  {
+    headers: getAuthHeaders(),
+  }
+);
+
       const recentTasks: Task[] = (data?.taskSummary?.recentTasks ?? []).map(mapApiTask);
       setTasks(recentTasks);
     } catch (err) {
@@ -87,7 +93,7 @@ export const TasksProvider: React.FC<{
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+}, [userId, taskRange]);
 
   useEffect(() => {
     fetchTasks();
@@ -148,7 +154,7 @@ export const TasksProvider: React.FC<{
   }, []);
 
   return (
-    <TasksContext.Provider value={{ tasks, loading, addTask, updateTask, deleteTask, refetchTasks: fetchTasks }}>
+    <TasksContext.Provider value={{ tasks, loading, setTaskRange, addTask, updateTask, deleteTask, refetchTasks: fetchTasks }}>
       {children}
     </TasksContext.Provider>
   );

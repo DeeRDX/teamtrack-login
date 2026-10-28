@@ -205,8 +205,8 @@ const MyTeam = () => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="week">This Week</SelectItem>
-                <SelectItem value="month">This Month</SelectItem>
+                <SelectItem value="week">Week</SelectItem>
+                <SelectItem value="month">Month</SelectItem>
               </SelectContent>
             </Select>
             <Button size="sm" className="gap-1.5">

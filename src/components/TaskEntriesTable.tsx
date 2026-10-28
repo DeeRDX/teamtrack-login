@@ -19,7 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Pencil, Trash2, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTasks, type Task } from "@/context/TasksContext";
 import LogTaskModal from "./LogTaskModal";
 import { toast } from "sonner";
@@ -30,12 +30,20 @@ const complexityStyles: Record<string, string> = {
   High: "bg-red-50 text-red-600 border-red-200",
 };
 
-const TaskEntriesTable = () => {
-  const { tasks, deleteTask, loading } = useTasks();
+interface Props {
+  range: "week" | "month";
+}
+
+const TaskEntriesTable = ({ range }: Props) => {
+  const { tasks, deleteTask, loading, setTaskRange } = useTasks();
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    setTaskRange(range);
+  }, [range, setTaskRange]);
 
   const handleEdit = (task: Task) => {
     setEditTask(task);
@@ -63,7 +71,7 @@ const TaskEntriesTable = () => {
           <div>
             <CardTitle className="text-base font-bold">Task Log Entries</CardTitle>
             <p className="text-xs text-muted-foreground mt-1">
-              All tasks logged this week — click edit or delete to manage entries.
+              All tasks logged this {range} — click edit or delete to manage entries.
             </p>
           </div>
           <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
