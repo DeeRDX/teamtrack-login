@@ -32,9 +32,10 @@ const complexityStyles: Record<string, string> = {
 
 interface Props {
   range: "week" | "month";
+  onTaskSaved?: () => void | Promise<void>;
 }
 
-const TaskEntriesTable = ({ range }: Props) => {
+const TaskEntriesTable = ({ range, onTaskSaved }: Props) => {
   const { tasks, deleteTask, loading, setTaskRange } = useTasks();
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -183,6 +184,7 @@ const TaskEntriesTable = ({ range }: Props) => {
           if (!o) setEditTask(null);
         }}
         editingTask={editTask}
+        onSaved={onTaskSaved}
       />
 
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && !deleting && setDeleteId(null)}>

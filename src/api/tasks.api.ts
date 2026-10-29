@@ -14,6 +14,7 @@ export interface TaskPayload {
   actualEndDate: string;
   plannedHours: number;
   hoursLogged: number;
+  devResponsibility?: string | null;
   dd: number;
   th : number;
 }

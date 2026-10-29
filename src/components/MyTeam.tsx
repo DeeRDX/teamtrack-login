@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import axiosInstance from "@/api/axios";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import LogTaskModal from "@/components/LogTaskModal";
+import type { Task } from "@/context/TasksContext";
 import {
   Select,
   SelectContent,
@@ -18,7 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { CalendarDays, Download, ArrowRight, X, Loader2, ShieldOff } from "lucide-react";
+import { CalendarDays, Download, ArrowRight, X, Loader2, ShieldOff, Pencil } from "lucide-react";
 
 // ── Types (match backend TdhTeamRosterDto / UserDetailDto) ───────────────────
 
@@ -31,6 +33,13 @@ interface RecentTask {
   classification: string | null;
   hoursLogged: number;
   logDate: string;
+  inProduction?: boolean;
+  plannedHours?: number;
+  planStartDate?: string | null;
+  planEndDate?: string | null;
+  actualStartDate?: string | null;
+  actualEndDate?: string | null;
+  devResponsibility?: string | null;
 }
 
 interface TeamMember {
@@ -54,6 +63,10 @@ interface TdhTeamRoster {
   dailyHours: number;
   totalMembers: number;
   members: TeamMember[];
+}
+
+interface MyTeamProps {
+  onTaskSaved?: () => void | Promise<void>;
 }
 
 const categoryStyles: Record<string, string> = {
@@ -95,44 +108,63 @@ const utilColor = (v: number) => {
   return "bg-primary";
 };
 
-const MyTeam = () => {
+const toEditableTask = (task: RecentTask): Task => ({
+  id: String(task.taskId),
+  mainId: task.mainId ?? "",
+  taskRefId: task.taskRefId ?? "",
+  taskDescription: task.taskDescription ?? "",
+  inProduction: task.inProduction ?? false,
+  complexity: task.complexity ?? "Low",
+  classification: task.classification ?? "CR",
+  logDate: task.logDate ?? "",
+  planStartDate: task.planStartDate ?? task.logDate ?? "",
+  planEndDate: task.planEndDate ?? task.logDate ?? "",
+  actualStartDate: task.actualStartDate ?? task.logDate ?? "",
+  actualEndDate: task.actualEndDate ?? task.logDate ?? "",
+  plannedHours: task.plannedHours ?? task.hoursLogged ?? 0,
+  hoursLogged: task.hoursLogged ?? 0,
+  devResponsibility: task.devResponsibility ?? "",
+});
+
+const MyTeam = ({ onTaskSaved }: MyTeamProps) => {
   const [teams, setTeams] = useState<TdhTeamRoster[]>([]);
   const [activeTeamIdx, setActiveTeamIdx] = useState(0);
   const [selected, setSelected] = useState<TeamMember | null>(null);
   const [loading, setLoading] = useState(true);
   const [notTdh, setNotTdh] = useState(false);
   const [range, setRange] = useState<"week" | "month">("week");
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+
+  const fetchTdhTeams = useCallback(async () => {
+    setLoading(true);
+    setNotTdh(false);
+    try {
+      const { data } = await axiosInstance.get<TdhTeamRoster[]>("/users/tdh-team", {
+        params: { range },
+      });
+      setTeams(data);
+      setSelected((prev) => {
+        const sameTeam = data[activeTeamIdx] ?? data[0];
+        const match = prev
+          ? sameTeam?.members.find((member) => member.userId === prev.userId)
+          : undefined;
+        return match ?? sameTeam?.members[0] ?? null;
+      });
+    } catch (err: any) {
+      if (err?.response?.status === 403) {
+        setNotTdh(true);
+      } else {
+        console.error("Failed to fetch TDH team roster:", err);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [activeTeamIdx, range]);
 
   useEffect(() => {
-    const fetchTdhTeams = async () => {
-      setLoading(true);
-      setNotTdh(false);
-      try {
-        const { data } = await axiosInstance.get<TdhTeamRoster[]>("/users/tdh-team", {
-          params: { range },
-        });
-        setTeams(data);
-        setSelected((prev) => {
-          // Try to keep the same member selected across a range change
-          const sameTeam = data[activeTeamIdx] ?? data[0];
-          const match = prev
-            ? sameTeam?.members.find((m) => m.userId === prev.userId)
-            : undefined;
-          return match ?? sameTeam?.members[0] ?? null;
-        });
-      } catch (err: any) {
-        if (err?.response?.status === 403) {
-          setNotTdh(true);
-        } else {
-          console.error("Failed to fetch TDH team roster:", err);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchTdhTeams();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range]);
+  }, [fetchTdhTeams]);
 
   if (loading) {
     return (
@@ -312,12 +344,13 @@ const MyTeam = () => {
                     <TableHead className="text-[11px] font-semibold uppercase tracking-wider">Description</TableHead>
                     <TableHead className="text-[11px] font-semibold uppercase tracking-wider">Category</TableHead>
                     <TableHead className="text-right text-[11px] font-semibold uppercase tracking-wider">Hours</TableHead>
+                    <TableHead className="text-right text-[11px] font-semibold uppercase tracking-wider">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {(selected.taskSummary?.recentTasks ?? []).length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
                         No tasks logged recently.
                       </TableCell>
                     </TableRow>
@@ -344,6 +377,21 @@ const MyTeam = () => {
                         <TableCell className="text-right text-sm font-semibold text-foreground">
                           {t.hoursLogged.toFixed(1)}h
                         </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-primary"
+                            onClick={() => {
+                              setEditingTask(toEditableTask(t));
+                              setEditOpen(true);
+                            }}
+                            title="Edit task"
+                            aria-label={`Edit task ${t.taskRefId ?? t.mainId ?? t.taskId}`}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))
                   )}
@@ -360,6 +408,18 @@ const MyTeam = () => {
             </div>
           </div>
         )}
+        <LogTaskModal
+          open={editOpen}
+          onOpenChange={(open) => {
+            setEditOpen(open);
+            if (!open) setEditingTask(null);
+          }}
+          editingTask={editingTask}
+          onSaved={async () => {
+            await fetchTdhTeams();
+            await onTaskSaved?.();
+          }}
+        />
       </CardContent>
     </Card>
   );

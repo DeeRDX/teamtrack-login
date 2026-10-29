@@ -16,6 +16,7 @@ export interface Task {
   actualEndDate: string;
   plannedHours: number;
   hoursLogged: number;
+  devResponsibility?: string | null;
 }
 
 interface TasksContextType {
@@ -23,9 +24,8 @@ interface TasksContextType {
   loading: boolean;
   setTaskRange: (range: "week" | "month") => void;
   addTask: (task: Omit<Task, "id">) => void;
-  updateTask: (id: string, task: Omit<Task, "id">) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
-  refetchTasks: () => void;
+  refetchTasks: () => Promise<void>;
 }
 
 const TasksContext = createContext<TasksContextType | null>(null);
@@ -45,16 +45,17 @@ const mapApiTask = (apiTask: any): Task => ({
   mainId: apiTask.mainId ?? "—",
   taskRefId: apiTask.taskRefId ?? "—",
   taskDescription: apiTask.taskDescription ?? "",
-  inProduction: false,
+  inProduction: apiTask.inProduction ?? false,
   complexity: apiTask.complexity ?? "Low",
   classification: apiTask.classification ?? "—",
   logDate: apiTask.logDate ?? "",
-  planStartDate: apiTask.logDate ?? "",
-  planEndDate: apiTask.logDate ?? "",
-  actualStartDate: apiTask.logDate ?? "",
-  actualEndDate: apiTask.logDate ?? "",
-  plannedHours: apiTask.hoursLogged ?? 0,
+  planStartDate: apiTask.planStartDate ?? apiTask.logDate ?? "",
+  planEndDate: apiTask.planEndDate ?? apiTask.logDate ?? "",
+  actualStartDate: apiTask.actualStartDate ?? apiTask.logDate ?? "",
+  actualEndDate: apiTask.actualEndDate ?? apiTask.logDate ?? "",
+  plannedHours: apiTask.plannedHours ?? apiTask.hoursLogged ?? 0,
   hoursLogged: apiTask.hoursLogged ?? 0,
+  devResponsibility: apiTask.devResponsibility ?? "",
 });
 
 export const TasksProvider: React.FC<{
@@ -103,40 +104,6 @@ export const TasksProvider: React.FC<{
     setTasks((prev) => [{ ...task, id: `t${Date.now()}` }, ...prev]);
   }, []);
 
-  const updateTask = useCallback(async (id: string, task: Omit<Task, "id">) => {
-    try {
-      await axios.put(
-        `${BASE_URL}/api/tasks/${id}`,
-        {
-          mainId: task.mainId,
-          taskRefId: task.taskRefId,
-          taskDescription: task.taskDescription,
-          inProduction: task.inProduction,
-          complexity: task.complexity,
-          classification: task.classification,
-          logDate: task.logDate,
-          planStartDate: task.planStartDate,
-          planEndDate: task.planEndDate,
-          actualStartDate: task.actualStartDate,
-          actualEndDate: task.actualEndDate,
-          plannedHours: task.plannedHours,
-          hoursLogged: task.hoursLogged,
-          dd: 0,
-          th : 0
-        },
-        { headers: getAuthHeaders() }
-      );
-      setTasks((prev) => prev.map((t) => (t.id === id ? { ...task, id } : t)));
-    } catch (err) {
-      if (axios.isAxiosError(err)) {
-        console.error("Update failed:", err.response?.status, err.response?.data);
-      } else {
-        console.error("Update failed:", err);
-      }
-      throw err; 
-    }
-  }, []);
-
   const deleteTask = useCallback(async (id: string) => {
     try {
       await axios.delete(`${BASE_URL}/api/tasks/${id}`, {
@@ -154,7 +121,7 @@ export const TasksProvider: React.FC<{
   }, []);
 
   return (
-    <TasksContext.Provider value={{ tasks, loading, setTaskRange, addTask, updateTask, deleteTask, refetchTasks: fetchTasks }}>
+    <TasksContext.Provider value={{ tasks, loading, setTaskRange, addTask, deleteTask, refetchTasks: fetchTasks }}>
       {children}
     </TasksContext.Provider>
   );

@@ -1,5 +1,5 @@
 import axiosInstance from "@/api/axios";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { Button } from "@/components/ui/button";
@@ -114,49 +114,42 @@ const DashboardPage = () => {
     rows: { rowNumber: number; success: boolean; taskDescription: string; message: string }[];
   } | null>(null);
 
+  const fetchStats = useCallback(async () => {
+    if (!userId) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    setStatsLoading(true);
+    try {
+      const { data } = await axiosInstance.get(`/users/${userId}?range=${exportType}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setStats({
+        managerName: data?.managerName ?? null,
+        assetName: data?.assetName ?? "—",
+        assetFunction: data?.assetFunction ?? "—",
+        dailyHours: data?.dailyHours ?? 0,
+        hoursLoggedToday: data?.hoursSummary?.hoursLoggedToday ?? 0,
+        hoursLoggedThisWeek: data?.hoursSummary?.hoursLoggedThisWeek ?? 0,
+        hoursExpectedThisWeek: data?.hoursSummary?.hoursExpectedThisWeek ?? 0,
+        hoursLoggedThisMonth: data?.hoursSummary?.hoursLoggedThisMonth ?? 0,
+        hoursExpectedThisMonth: data?.hoursSummary?.hoursExpectedThisMonth ?? 0,
+        totalTasksThisMonth: data?.taskSummary?.totalTasksThisMonth ?? 0,
+        totalTasksToday: data?.taskSummary?.totalTasksToday ?? 0,
+        totalLeavesThisMonth: data?.leaveSummary?.totalLeavesThisMonth ?? 0,
+        weekBreakdown: data?.hoursSummary?.weekBreakdown ?? [],
+      });
+    } catch (err) {
+      console.error("Failed to fetch user stats:", err);
+    } finally {
+      setStatsLoading(false);
+    }
+  }, [userId, exportType]);
+
   useEffect(() => {
-    const fetchStats = async () => {
-      if (!userId) return;
-      const token = localStorage.getItem("token");
-      if (!token) return;
-
-      setStatsLoading(true);
-      try {
-        const { data } = await axiosInstance.get(
-  `/users/${userId}?range=${exportType}`,
-  {
-    headers: { Authorization: `Bearer ${token}` },
-  }
-);
-
-        setStats({
-          managerName: data?.managerName ?? null,
-          assetName: data?.assetName ?? "—",
-          assetFunction: data?.assetFunction ?? "—",
-          dailyHours: data?.dailyHours ?? 0,
-
-          hoursLoggedToday: data?.hoursSummary?.hoursLoggedToday ?? 0,
-
-          hoursLoggedThisWeek: data?.hoursSummary?.hoursLoggedThisWeek ?? 0,
-          hoursExpectedThisWeek: data?.hoursSummary?.hoursExpectedThisWeek ?? 0,
-          hoursLoggedThisMonth: data?.hoursSummary?.hoursLoggedThisMonth ?? 0,
-          hoursExpectedThisMonth: data?.hoursSummary?.hoursExpectedThisMonth ?? 0,
-
-          totalTasksThisMonth: data?.taskSummary?.totalTasksThisMonth ?? 0,
-          totalTasksToday: data?.taskSummary?.totalTasksToday ?? 0,
-
-          totalLeavesThisMonth: data?.leaveSummary?.totalLeavesThisMonth ?? 0,
-          weekBreakdown: data?.hoursSummary?.weekBreakdown ?? [],
-        });
-      } catch (err) {
-        console.error("Failed to fetch user stats:", err);
-      } finally {
-        setStatsLoading(false);
-      }
-    };
-
     fetchStats();
-}, [userId, exportType]);
+  }, [fetchStats]);
 
 
   const handleExport = async () => {
@@ -443,7 +436,7 @@ const DashboardPage = () => {
         </header>
         <main className="flex-1 p-8">
           {activeView === "myteam" ? (
-            <MyTeam />
+            <MyTeam onTaskSaved={fetchStats} />
           ) : activeView === "myleaves" ? (
             <MyLeaves />
           ) : activeView === "admin" ? (
@@ -525,14 +518,14 @@ const DashboardPage = () => {
               </div>
 
               <div className="mb-6">
-           <TaskEntriesTable range={exportType} />
+             <TaskEntriesTable range={exportType} onTaskSaved={fetchStats} />
               </div>
             </>
           )}
         </main>
       </div>
 
-      <LogTaskModal open={logTaskOpen} onOpenChange={setLogTaskOpen} />
+      <LogTaskModal open={logTaskOpen} onOpenChange={setLogTaskOpen} onSaved={fetchStats} />
 
       {/* ── Import Modal ─────────────────────────────────────────────────── */}
       <Dialog

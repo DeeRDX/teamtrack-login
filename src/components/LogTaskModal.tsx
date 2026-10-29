@@ -32,6 +32,7 @@ interface LogTaskModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editingTask?: Task | null;
+  onSaved?: () => void | Promise<void>;
 }
 
 interface FormState {
@@ -180,8 +181,8 @@ const CreatableCombobox = ({ value, onChange, placeholder, options }: CreatableC
   );
 };
 
-const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) => {
-  const { addTask, updateTask } = useTasks();
+const LogTaskModal = ({ open, onOpenChange, editingTask, onSaved }: LogTaskModalProps) => {
+  const { addTask, refetchTasks } = useTasks();
   const [formData, setFormData] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
 
@@ -204,7 +205,7 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
         hoursLogged: String(editingTask.hoursLogged ?? 0),
         dd : 0,
         th : 0,
-        devResponsibility: (editingTask as any).devResponsibility ?? "",
+        devResponsibility: editingTask.devResponsibility ?? "",
       });
     } else {
       setFormData(emptyForm);
@@ -242,15 +243,17 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
     try {
       if (editingTask) {
         await updateTaskApi(editingTask.id, payload);
-        updateTask(editingTask.id, payload);
+        await refetchTasks();
         toast({ title: "Task updated", description: "Changes saved successfully." });
       } else {
         const created = await createTask(payload);
         // Prefer server-issued id when available
         addTask({ ...payload, ...(created?.id ? {} : {}) });
+        await refetchTasks();
         toast({ title: "Task created", description: "Task saved successfully." });
       }
       onOpenChange(false);
+      await onSaved?.();
     } catch (err: any) {
       const message =
         err?.response?.data?.message ||
