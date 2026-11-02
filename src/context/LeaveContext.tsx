@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { format } from "date-fns";
+import axiosInstance from "@/api/axios";
 
 export interface LeaveRow {
   leaveId: string;
@@ -7,14 +8,35 @@ export interface LeaveRow {
   leaveType: "Full" | "Half";
 }
 
+export interface HolidayRow {
+  holidayDate: string;
+  holidayName: string;
+}
+
+export interface HolidayImportSummary {
+  totalRows: number;
+  importedCount: number;
+  updatedCount: number;
+  failureCount: number;
+  rows: {
+    rowNumber: number;
+    holidayName: string;
+    success: boolean;
+    message: string;
+  }[];
+}
+
 interface LeaveContextType {
   leaveHistory: LeaveRow[];
+  holidays: HolidayRow[];
   loading: boolean;
   calMonth: number;
   calYear: number;
   setCalMonth: (month: number) => void;
   setCalYear: (year: number) => void;
   fetchLeaveHistory: (type?: string, date?: string) => Promise<void>;
+  fetchHolidays: () => Promise<void>;
+  importHolidays: (file: File) => Promise<HolidayImportSummary>;
   submitLeave: (leaveDate: string, leaveType: "Full" | "Half") => Promise<void>;
   deleteLeave: (leaveId: string) => Promise<void>;
 }
@@ -35,15 +57,14 @@ export const LeaveProvider: React.FC<{
   children: React.ReactNode;
   userId: number | string | null;
 }> = ({ children, userId }) => {
-  const today = new Date();
-
   const [leaveHistory, setLeaveHistory] = useState<LeaveRow[]>([]);
+  const [holidays, setHolidays] = useState<HolidayRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [calMonth, setCalMonth] = useState(today.getMonth());
-  const [calYear, setCalYear] = useState(today.getFullYear());
+  const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
+  const [calYear, setCalYear] = useState(() => new Date().getFullYear());
 
   const fetchLeaveHistory = useCallback(
-    async (type = "month", date = format(today, "yyyy-MM-dd")) => {
+    async (type = "month", date = format(new Date(), "yyyy-MM-dd")) => {
       if (!userId) return;
       const token = localStorage.getItem("token");
       if (!token) {
@@ -75,10 +96,36 @@ export const LeaveProvider: React.FC<{
     [userId]
   );
 
+  const fetchHolidays = useCallback(async () => {
+    try {
+      const { data } = await axiosInstance.get<HolidayRow[]>("/leave/holidays");
+      setHolidays(data);
+    } catch (err) {
+      console.error("Failed to fetch company holidays:", err);
+      setHolidays([]);
+    }
+  }, []);
+
+  const importHolidays = useCallback(async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const { data } = await axiosInstance.post<HolidayImportSummary>(
+      "/leave/holidays/import",
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } }
+    );
+    await fetchHolidays();
+    return data;
+  }, [fetchHolidays]);
+
   // Initial load for the current month
   useEffect(() => {
     fetchLeaveHistory();
   }, [fetchLeaveHistory]);
+
+  useEffect(() => {
+    fetchHolidays();
+  }, [fetchHolidays]);
 
   const submitLeave = useCallback(
     async (leaveDate: string, leaveType: "Full" | "Half") => {
@@ -91,7 +138,10 @@ export const LeaveProvider: React.FC<{
         },
         body: JSON.stringify({ leaveDate, leaveType }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        const error = await res.json().catch(() => null);
+        throw new Error(error?.message ?? `HTTP ${res.status}`);
+      }
       // Refresh the currently visible month after submit
       const firstDay = format(new Date(calYear, calMonth, 1), "yyyy-MM-dd");
       await fetchLeaveHistory("month", firstDay);
@@ -122,12 +172,15 @@ export const LeaveProvider: React.FC<{
     <LeaveContext.Provider
       value={{
         leaveHistory,
+        holidays,
         loading,
         calMonth,
         calYear,
         setCalMonth,
         setCalYear,
         fetchLeaveHistory,
+        fetchHolidays,
+        importHolidays,
         submitLeave,
         deleteLeave,
       }}

@@ -3,10 +3,16 @@ import axiosInstance from "./axios";
 interface LoginResponse {
   token: string;
   user: {
-    id: string;
+    userId: number;
+    enumber: string;
+    fullName: string;
     email: string;
-    name: string;
-    role: string;
+    roleName: string;
+    hierarchyLevel: number;
+    teamName: string | null;
+    dailyHours: number | null;
+    assetName: string | null;
+    managerName: string | null;
   };
 }
 
