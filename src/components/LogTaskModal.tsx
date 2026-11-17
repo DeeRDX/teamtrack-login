@@ -4,6 +4,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -69,7 +70,7 @@ const emptyForm: FormState = {
   actualStartDate: today(),
   actualEndDate: today(),
   plannedHours: "0",
-  hoursLogged: "0",
+  hoursLogged: "0.5",
   dd:0,
   th:0,
   devResponsibility: "",
@@ -219,6 +220,41 @@ const LogTaskModal = ({ open, onOpenChange, editingTask, onSaved }: LogTaskModal
   };
 
   const handleSave = async () => {
+    const hoursLogged = Number(formData.hoursLogged);
+    if (!formData.taskDescription.trim()) {
+      toast({
+        title: "Task description required",
+        description: "Enter a description before saving the task.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!Number.isFinite(hoursLogged) || hoursLogged < 0.5 || hoursLogged > 24) {
+      toast({
+        title: "Invalid hours logged",
+        description: "Hours logged must be between 0.5 and 24.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const plannedHours = Number(formData.plannedHours);
+    if (!Number.isFinite(plannedHours) || plannedHours < 0 || plannedHours > 24) {
+      toast({
+        title: "Invalid planned hours",
+        description: "Planned hours must be between 0 and 24.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!formData.logDate) {
+      toast({
+        title: "Log date required",
+        description: "Select a log date before saving the task.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const payload = {
       mainId: formData.mainId,
       taskRefId: formData.taskRefId,
@@ -231,8 +267,8 @@ const LogTaskModal = ({ open, onOpenChange, editingTask, onSaved }: LogTaskModal
       planEndDate: formData.planEndDate,
       actualStartDate: formData.actualStartDate,
       actualEndDate: formData.actualEndDate,
-      plannedHours: Number(formData.plannedHours) || 0,
-      hoursLogged: Number(formData.hoursLogged) || 0,
+      plannedHours,
+      hoursLogged,
       dd : 0,
       th : 0,
       devResponsibility: formData.devResponsibility || null,
@@ -279,6 +315,9 @@ const LogTaskModal = ({ open, onOpenChange, editingTask, onSaved }: LogTaskModal
           <DialogTitle className="text-xl font-bold text-foreground">
             {editingTask ? "Edit Task" : "Add New Task"}
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            {editingTask ? "Update the task details." : "Enter the task details to log your work."}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="px-6 pb-6 space-y-5">
@@ -325,6 +364,8 @@ const LogTaskModal = ({ open, onOpenChange, editingTask, onSaved }: LogTaskModal
               placeholder="Describe your progress..."
               className="min-h-[80px] resize-y"
               value={formData.taskDescription}
+              maxLength={2000}
+              required
               onChange={(e) => handleChange("taskDescription", e.target.value)}
             />
           </div>
@@ -387,7 +428,9 @@ const LogTaskModal = ({ open, onOpenChange, editingTask, onSaved }: LogTaskModal
               <Input
                 type="number"
                 step="0.5"
-                min="0"
+                min="0.5"
+                max="24"
+                required
                 value={formData.hoursLogged}
                 onChange={(e) => handleChange("hoursLogged", e.target.value)}
               />

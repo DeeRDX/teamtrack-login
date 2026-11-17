@@ -29,6 +29,7 @@ import { useAuth } from "@/context/AuthContext";
 import {
   Clock,
   Calendar as CalendarIcon,
+  AlertCircle,
   Plus,
   Check,
   ChevronLeft,
@@ -163,12 +164,15 @@ const MyLeaves = () => {
   const {
     leaveHistory,
     holidays,
+    holidaysError,
+    holidaysLoading,
     loading,
     calMonth,
     calYear,
     setCalMonth,
     setCalYear,
     fetchLeaveHistory,
+    fetchHolidays,
     importHolidays,
     submitLeave,
     deleteLeave,
@@ -319,6 +323,25 @@ const MyLeaves = () => {
           </Button>
         )}
       </div>
+
+      {holidaysError && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+          <p className="flex items-center gap-2 text-sm text-destructive">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            {holidaysError}
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => void fetchHolidays()}
+            disabled={holidaysLoading}
+          >
+            {holidaysLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+            {holidaysLoading ? "Retrying..." : "Retry"}
+          </Button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
         {/* Left column */}

@@ -20,6 +20,8 @@ export const login = async (email: string, password: string): Promise<LoginRespo
   const response = await axiosInstance.post<LoginResponse>("/auth/login", {
     email,
     password,
+  }, {
+    timeout: 20000,
   });
   return response.data;
 };

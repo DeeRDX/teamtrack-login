@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { format } from "date-fns";
+import { isAxiosError } from "axios";
 import axiosInstance from "@/api/axios";
 
 export interface LeaveRow {
@@ -29,6 +30,8 @@ export interface HolidayImportSummary {
 interface LeaveContextType {
   leaveHistory: LeaveRow[];
   holidays: HolidayRow[];
+  holidaysError: string | null;
+  holidaysLoading: boolean;
   loading: boolean;
   calMonth: number;
   calYear: number;
@@ -59,6 +62,8 @@ export const LeaveProvider: React.FC<{
 }> = ({ children, userId }) => {
   const [leaveHistory, setLeaveHistory] = useState<LeaveRow[]>([]);
   const [holidays, setHolidays] = useState<HolidayRow[]>([]);
+  const [holidaysError, setHolidaysError] = useState<string | null>(null);
+  const [holidaysLoading, setHolidaysLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
   const [calYear, setCalYear] = useState(() => new Date().getFullYear());
@@ -97,14 +102,35 @@ export const LeaveProvider: React.FC<{
   );
 
   const fetchHolidays = useCallback(async () => {
+    if (userId == null || !localStorage.getItem("token")) {
+      setHolidays([]);
+      setHolidaysError(null);
+      setHolidaysLoading(false);
+      return;
+    }
+
+    setHolidaysLoading(true);
+    setHolidaysError(null);
     try {
-      const { data } = await axiosInstance.get<HolidayRow[]>("/leave/holidays");
-      setHolidays(data);
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const { data } = await axiosInstance.get<HolidayRow[]>("/leave/holidays");
+          setHolidays(data);
+          return;
+        } catch (error) {
+          if (!isAxiosError(error) || error.response || attempt === 2) {
+            throw error;
+          }
+          await new Promise((resolve) => window.setTimeout(resolve, 500 * (attempt + 1)));
+        }
+      }
     } catch (err) {
       console.error("Failed to fetch company holidays:", err);
-      setHolidays([]);
+      setHolidaysError("Company holidays couldn't be loaded. Check that the backend is running and try again.");
+    } finally {
+      setHolidaysLoading(false);
     }
-  }, []);
+  }, [userId]);
 
   const importHolidays = useCallback(async (file: File) => {
     const formData = new FormData();
@@ -173,6 +199,8 @@ export const LeaveProvider: React.FC<{
       value={{
         leaveHistory,
         holidays,
+        holidaysError,
+        holidaysLoading,
         loading,
         calMonth,
         calYear,

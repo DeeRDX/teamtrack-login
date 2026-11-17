@@ -144,6 +144,7 @@ const MyTeam = ({ onTaskSaved }: MyTeamProps) => {
         params: { range },
       });
       setTeams(data);
+      setNotTdh(data.length === 0);
       setSelected((prev) => {
         const sameTeam = data[activeTeamIdx] ?? data[0];
         const match = prev

@@ -17,12 +17,14 @@ import MyLeaves from "@/components/MyLeaves";
 import UserAdministration from "@/components/UserAdministration";
 import AssetAdministration from "@/components/AssetAdministration";
 import TeamAdministration from "@/components/TeamAdministration";
+import DeliveryManagerView from "@/components/DeliveryManagerView";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Users,
@@ -51,7 +53,7 @@ import {
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", key: "dashboard" },
   { icon: Clock, label: "Timesheet", key: "timesheet" },
-  { icon: FileText, label: "Summary", key: "summary" },
+  { icon: BarChart3, label: "DM View", key: "dmview" },
   { icon: UsersRound, label: "My Team", key: "myteam" },
   { icon: CalendarDays, label: "My Leaves", key: "myleaves" },
   { icon: BarChart3, label: "Reports", key: "reports" },
@@ -96,6 +98,7 @@ const DashboardPage = () => {
   const userId = userAny?.userId || null;
   const userName = userAny?.fullName || userAny?.name || "John";
   const uRole = userAny?.roleName || userAny?.role || "Member";
+  const canViewDm = user?.hierarchyLevel === 2;
 
   const [logTaskOpen, setLogTaskOpen] = useState(false);
   const [activeView, setActiveView] = useState<string>("dashboard");
@@ -313,7 +316,7 @@ const DashboardPage = () => {
             Main Menu
           </p>
           <ul className="space-y-1">
-            {navItems.map((item) => (
+            {navItems.filter((item) => item.key !== "dmview" || canViewDm).map((item) => (
               <li key={item.label}>
                 <button
                   onClick={() => setActiveView(item.key)}
@@ -366,15 +369,21 @@ const DashboardPage = () => {
       <div className="flex flex-1 flex-col overflow-auto">
         <header className="flex items-center justify-between border-b border-border bg-card px-8 py-5">
           <div>
-            <h1 className="text-xl font-bold text-foreground">Productivity Overview</h1>
+            <h1 className="text-xl font-bold text-foreground">
+              {activeView === "dmview" ? "DM View" : "Productivity Overview"}
+            </h1>
             <p className="text-sm text-muted-foreground">
-              Welcome back, {userName}. Here's your activity for this week.
+              {activeView === "dmview"
+                ? `Welcome back, ${userName}. Here's your project portfolio.`
+                : `Welcome back, ${userName}. Here's your activity for this week.`}
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Button size="sm" className="gap-1.5" onClick={() => setLogTaskOpen(true)}>
-              <Plus className="h-4 w-4" /> Log Task
-            </Button>
+            {activeView !== "dmview" && (
+              <Button size="sm" className="gap-1.5" onClick={() => setLogTaskOpen(true)}>
+                <Plus className="h-4 w-4" /> Log Task
+              </Button>
+            )}
 
             {/* Export controls — only shown on the dashboard view */}
             {activeView === "dashboard" && (
@@ -435,7 +444,9 @@ const DashboardPage = () => {
           </div>
         </header>
         <main className="flex-1 p-8">
-          {activeView === "myteam" ? (
+          {activeView === "dmview" ? (
+            <DeliveryManagerView />
+          ) : activeView === "myteam" ? (
             <MyTeam onTaskSaved={fetchStats} />
           ) : activeView === "myleaves" ? (
             <MyLeaves />
@@ -540,6 +551,9 @@ const DashboardPage = () => {
               <Upload className="h-4 w-4" />
               Import Tasks from Excel
             </DialogTitle>
+            <DialogDescription>
+              Select an Excel file to import task entries.
+            </DialogDescription>
           </DialogHeader>
 
           {!importResult ? (
