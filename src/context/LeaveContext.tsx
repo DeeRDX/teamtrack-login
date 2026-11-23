@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { format } from "date-fns";
+import { isAxiosError } from "axios";
+import axiosInstance from "@/api/axios";
 
 export interface LeaveRow {
   leaveId: string;
@@ -7,14 +9,37 @@ export interface LeaveRow {
   leaveType: "Full" | "Half";
 }
 
+export interface HolidayRow {
+  holidayDate: string;
+  holidayName: string;
+}
+
+export interface HolidayImportSummary {
+  totalRows: number;
+  importedCount: number;
+  updatedCount: number;
+  failureCount: number;
+  rows: {
+    rowNumber: number;
+    holidayName: string;
+    success: boolean;
+    message: string;
+  }[];
+}
+
 interface LeaveContextType {
   leaveHistory: LeaveRow[];
+  holidays: HolidayRow[];
+  holidaysError: string | null;
+  holidaysLoading: boolean;
   loading: boolean;
   calMonth: number;
   calYear: number;
   setCalMonth: (month: number) => void;
   setCalYear: (year: number) => void;
   fetchLeaveHistory: (type?: string, date?: string) => Promise<void>;
+  fetchHolidays: () => Promise<void>;
+  importHolidays: (file: File) => Promise<HolidayImportSummary>;
   submitLeave: (leaveDate: string, leaveType: "Full" | "Half") => Promise<void>;
   deleteLeave: (leaveId: string) => Promise<void>;
 }
@@ -35,15 +60,16 @@ export const LeaveProvider: React.FC<{
   children: React.ReactNode;
   userId: number | string | null;
 }> = ({ children, userId }) => {
-  const today = new Date();
-
   const [leaveHistory, setLeaveHistory] = useState<LeaveRow[]>([]);
+  const [holidays, setHolidays] = useState<HolidayRow[]>([]);
+  const [holidaysError, setHolidaysError] = useState<string | null>(null);
+  const [holidaysLoading, setHolidaysLoading] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [calMonth, setCalMonth] = useState(today.getMonth());
-  const [calYear, setCalYear] = useState(today.getFullYear());
+  const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
+  const [calYear, setCalYear] = useState(() => new Date().getFullYear());
 
   const fetchLeaveHistory = useCallback(
-    async (type = "month", date = format(today, "yyyy-MM-dd")) => {
+    async (type = "month", date = format(new Date(), "yyyy-MM-dd")) => {
       if (!userId) return;
       const token = localStorage.getItem("token");
       if (!token) {
@@ -75,10 +101,57 @@ export const LeaveProvider: React.FC<{
     [userId]
   );
 
+  const fetchHolidays = useCallback(async () => {
+    if (userId == null || !localStorage.getItem("token")) {
+      setHolidays([]);
+      setHolidaysError(null);
+      setHolidaysLoading(false);
+      return;
+    }
+
+    setHolidaysLoading(true);
+    setHolidaysError(null);
+    try {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const { data } = await axiosInstance.get<HolidayRow[]>("/leave/holidays");
+          setHolidays(data);
+          return;
+        } catch (error) {
+          if (!isAxiosError(error) || error.response || attempt === 2) {
+            throw error;
+          }
+          await new Promise((resolve) => window.setTimeout(resolve, 500 * (attempt + 1)));
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch company holidays:", err);
+      setHolidaysError("Company holidays couldn't be loaded. Check that the backend is running and try again.");
+    } finally {
+      setHolidaysLoading(false);
+    }
+  }, [userId]);
+
+  const importHolidays = useCallback(async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const { data } = await axiosInstance.post<HolidayImportSummary>(
+      "/leave/holidays/import",
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } }
+    );
+    await fetchHolidays();
+    return data;
+  }, [fetchHolidays]);
+
   // Initial load for the current month
   useEffect(() => {
     fetchLeaveHistory();
   }, [fetchLeaveHistory]);
+
+  useEffect(() => {
+    fetchHolidays();
+  }, [fetchHolidays]);
 
   const submitLeave = useCallback(
     async (leaveDate: string, leaveType: "Full" | "Half") => {
@@ -91,7 +164,10 @@ export const LeaveProvider: React.FC<{
         },
         body: JSON.stringify({ leaveDate, leaveType }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        const error = await res.json().catch(() => null);
+        throw new Error(error?.message ?? `HTTP ${res.status}`);
+      }
       // Refresh the currently visible month after submit
       const firstDay = format(new Date(calYear, calMonth, 1), "yyyy-MM-dd");
       await fetchLeaveHistory("month", firstDay);
@@ -122,12 +198,17 @@ export const LeaveProvider: React.FC<{
     <LeaveContext.Provider
       value={{
         leaveHistory,
+        holidays,
+        holidaysError,
+        holidaysLoading,
         loading,
         calMonth,
         calYear,
         setCalMonth,
         setCalYear,
         fetchLeaveHistory,
+        fetchHolidays,
+        importHolidays,
         submitLeave,
         deleteLeave,
       }}

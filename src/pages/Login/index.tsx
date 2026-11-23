@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";   // ← useLocation added
 import { useForm } from "react-hook-form";
 import { Eye, EyeOff, BarChart3, AlertCircle } from "lucide-react";
+import { isAxiosError } from "axios";
 import { useAuth } from "@/context/AuthContext";
 import { login as loginApi } from "@/api/auth.api";
 import { Button } from "@/components/ui/button";
@@ -46,8 +47,16 @@ const LoginPage = () => {
       const response = await loginApi(data.email, data.password);
       login(response.user, response.token);
       navigate(from, { replace: true });   // ← CHANGED
-    } catch {
-      setErrorMessage("Authentication Failed");
+    } catch (error) {
+      if (isAxiosError(error) && (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT")) {
+        setErrorMessage("The sign-in request timed out. Check that the backend is running, then try again.");
+      } else if (isAxiosError(error) && !error.response) {
+        setErrorMessage("Couldn't reach the sign-in server. Check your connection and backend, then try again.");
+      } else if (isAxiosError(error) && error.response?.status === 401) {
+        setErrorMessage("Invalid email or password.");
+      } else {
+        setErrorMessage("Sign-in failed because of a server error. Please try again shortly.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -193,7 +202,11 @@ const LoginPage = () => {
                   <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
                   <div>
                     <p className="text-sm font-semibold text-destructive">{errorMessage}</p>
-                    <p className="text-xs text-destructive/80 mt-0.5">Please check your credentials and try again.</p>
+                    <p className="text-xs text-destructive/80 mt-0.5">
+                      {errorMessage === "Invalid email or password."
+                        ? "Check your credentials and try again."
+                        : "Your sign-in form is ready to retry."}
+                    </p>
                   </div>
                 </div>
               )}

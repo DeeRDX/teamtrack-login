@@ -4,6 +4,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ interface LogTaskModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editingTask?: Task | null;
+  onSaved?: () => void | Promise<void>;
 }
 
 interface FormState {
@@ -68,7 +70,7 @@ const emptyForm: FormState = {
   actualStartDate: today(),
   actualEndDate: today(),
   plannedHours: "0",
-  hoursLogged: "0",
+  hoursLogged: "0.5",
   dd:0,
   th:0,
   devResponsibility: "",
@@ -180,8 +182,8 @@ const CreatableCombobox = ({ value, onChange, placeholder, options }: CreatableC
   );
 };
 
-const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) => {
-  const { addTask, updateTask } = useTasks();
+const LogTaskModal = ({ open, onOpenChange, editingTask, onSaved }: LogTaskModalProps) => {
+  const { addTask, refetchTasks } = useTasks();
   const [formData, setFormData] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
 
@@ -204,7 +206,7 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
         hoursLogged: String(editingTask.hoursLogged ?? 0),
         dd : 0,
         th : 0,
-        devResponsibility: (editingTask as any).devResponsibility ?? "",
+        devResponsibility: editingTask.devResponsibility ?? "",
       });
     } else {
       setFormData(emptyForm);
@@ -218,6 +220,41 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
   };
 
   const handleSave = async () => {
+    const hoursLogged = Number(formData.hoursLogged);
+    if (!formData.taskDescription.trim()) {
+      toast({
+        title: "Task description required",
+        description: "Enter a description before saving the task.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!Number.isFinite(hoursLogged) || hoursLogged < 0.5 || hoursLogged > 24) {
+      toast({
+        title: "Invalid hours logged",
+        description: "Hours logged must be between 0.5 and 24.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const plannedHours = Number(formData.plannedHours);
+    if (!Number.isFinite(plannedHours) || plannedHours < 0 || plannedHours > 24) {
+      toast({
+        title: "Invalid planned hours",
+        description: "Planned hours must be between 0 and 24.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!formData.logDate) {
+      toast({
+        title: "Log date required",
+        description: "Select a log date before saving the task.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const payload = {
       mainId: formData.mainId,
       taskRefId: formData.taskRefId,
@@ -230,8 +267,8 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
       planEndDate: formData.planEndDate,
       actualStartDate: formData.actualStartDate,
       actualEndDate: formData.actualEndDate,
-      plannedHours: Number(formData.plannedHours) || 0,
-      hoursLogged: Number(formData.hoursLogged) || 0,
+      plannedHours,
+      hoursLogged,
       dd : 0,
       th : 0,
       devResponsibility: formData.devResponsibility || null,
@@ -242,15 +279,17 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
     try {
       if (editingTask) {
         await updateTaskApi(editingTask.id, payload);
-        updateTask(editingTask.id, payload);
+        await refetchTasks();
         toast({ title: "Task updated", description: "Changes saved successfully." });
       } else {
         const created = await createTask(payload);
         // Prefer server-issued id when available
         addTask({ ...payload, ...(created?.id ? {} : {}) });
+        await refetchTasks();
         toast({ title: "Task created", description: "Task saved successfully." });
       }
       onOpenChange(false);
+      await onSaved?.();
     } catch (err: any) {
       const message =
         err?.response?.data?.message ||
@@ -276,6 +315,9 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
           <DialogTitle className="text-xl font-bold text-foreground">
             {editingTask ? "Edit Task" : "Add New Task"}
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            {editingTask ? "Update the task details." : "Enter the task details to log your work."}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="px-6 pb-6 space-y-5">
@@ -322,6 +364,8 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
               placeholder="Describe your progress..."
               className="min-h-[80px] resize-y"
               value={formData.taskDescription}
+              maxLength={2000}
+              required
               onChange={(e) => handleChange("taskDescription", e.target.value)}
             />
           </div>
@@ -384,7 +428,9 @@ const LogTaskModal = ({ open, onOpenChange, editingTask }: LogTaskModalProps) =>
               <Input
                 type="number"
                 step="0.5"
-                min="0"
+                min="0.5"
+                max="24"
+                required
                 value={formData.hoursLogged}
                 onChange={(e) => handleChange("hoursLogged", e.target.value)}
               />

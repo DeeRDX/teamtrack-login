@@ -3,10 +3,16 @@ import axiosInstance from "./axios";
 interface LoginResponse {
   token: string;
   user: {
-    id: string;
+    userId: number;
+    enumber: string;
+    fullName: string;
     email: string;
-    name: string;
-    role: string;
+    roleName: string;
+    hierarchyLevel: number;
+    teamName: string | null;
+    dailyHours: number | null;
+    assetName: string | null;
+    managerName: string | null;
   };
 }
 
@@ -14,6 +20,8 @@ export const login = async (email: string, password: string): Promise<LoginRespo
   const response = await axiosInstance.post<LoginResponse>("/auth/login", {
     email,
     password,
+  }, {
+    timeout: 20000,
   });
   return response.data;
 };

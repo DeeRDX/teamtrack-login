@@ -2,10 +2,16 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useNavigate } from "react-router-dom";
 
 interface User {
-  id: string;
+  userId: number;
+  enumber: string;
+  fullName: string;
   email: string;
-  name: string;
-  role: string;
+  roleName: string;
+  hierarchyLevel: number;
+  teamName: string | null;
+  dailyHours: number | null;
+  assetName: string | null;
+  managerName: string | null;
 }
 
 interface AuthContextType {
